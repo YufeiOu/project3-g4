@@ -112,41 +112,67 @@ public class Player implements sqdance.sim.Player {
 			stay[i] = new Point(0., 0.);
 		}
 
+		//first update partner information and culmulative time danced
+		for(int i = 0; i < d; i++){
+			if(enjoyment_gained[i] == 6){
+				soulmate[i] = partner_ids[i];
+				relation[i][partner_ids[i]] = 1;
+			}
+			else if(enjoyment_gained[i] == 4){
+				relation[i][partner_ids[i]] = 2;
+			}
+			else if(enjoyment_gained[i] == 3){
+				relation[i][partner_ids[i]] = 3;
+			}
+			danced[i][partner_ids[i]] += 6;
+		}
+
 		if(stayed < boredTime){
 			stayed += 6;
 			return stay;
 		}
 		stayed = 0;
 
-		/*
-		for(Point p:positions){
-			System.out.println(p.x + "," + p.y);
-		}
-		*/
-
 		Point[] instructions = new Point[d];
+
+		Point[] swaped = new Point[d];
+		for (int i = 0; i < d; ++i) {
+			swaped[i] = new Point(0., 0.);
+		}
+		//no enjoyment last round, swap dancer across slot
+		for(int j = 0; j < d; j++){
+			if(enjoyment_gained[j] == 0 && swaped[j].x == 0 && swaped[j].y == 0){
+				Point curr = positions[j];
+				for(int k = 0; k < d; k++){
+					if(k == j) continue;
+					Point swap = positions[k];
+					if(swap.y == curr.y && Math.abs(swap.x - curr.x) == danceDis){
+						swaped[k] = curr;
+						swaped[j] = swap;
+						//System.out.print("swaped " + (int)curr.x + "," + curr.y + "with:");
+						//System.out.println((int)swap.x + "," + swap.y);
+						break;
+					}
+				}
+			}
+		}
+		
+		//move snake by one rotation
+		//if swaped, move to swap position instead of next rotation
 		Point[] newPositions = new Point[d];
 		for (int i = 0; i < d; ++i) {
 			Point old_p = positions[i];
 			Point new_p = positions[(i+1)%d];
-			instructions[i] = new Point(new_p.x-old_p.x,new_p.y-old_p.y);
-			newPositions[i] = new_p;
 			/*
-			if(i == 0 || i == d-1){
-				System.out.println(i + " , "  + old_p.x + " , " + old_p.y);
+			if(swaped[i].x != 0 || swaped[i].y != 0){
+				new_p = swaped[i];
 			}
 			*/
+			instructions[i] = new Point(new_p.x-old_p.x,new_p.y-old_p.y);
+			newPositions[i] = new_p;
 		}
+
 		positions = newPositions;
-
-		for(int i = 0; i < d; i++){
-			for(int j = i+1; j < d; j++){
-				if(Math.abs(newPositions[i].x-newPositions[j].x) <= eps && Math.abs(newPositions[i].y-newPositions[j].y) <= eps){
-					System.out.println(newPositions[i]);
-				}
-			}
-		}
-
 		return instructions;
 	}
 

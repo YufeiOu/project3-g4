@@ -29,10 +29,17 @@ public class Player implements sqdance.sim.Player {
 
 	private int stayed;
 
-
 	private double delta = 1e-3;
 	private double danceDis = minDis + delta;
 	private double keepDis = danceDis + delta;
+
+	private class MetaData {
+		Point[] pos;
+		int partner;
+		Point[] partnerPos;
+	};
+
+	private MetaData[] data;
 	//====================== end =========================
 
 	public void init(int d, int room_side) {
@@ -76,27 +83,17 @@ public class Player implements sqdance.sim.Player {
 		positions = new Point[d];
 		int cur = 0;
 		for (int i = 0; i < numSlot; ++i) {
-			if ((i&1) == 1) {
-				for (int j = 0; j < pits.get(i).size(); ++j) {
-					Point p = pits.get(i).get(j);
-					positions[cur++] = new Point(p.x + danceDis, p.y);
-				}
-			} else {
-				for (int j = 0; j < pits.get(i).size(); ++j) {
-					positions[cur++] = pits.get(i).get(j);
-				}
+			for (int j = 0; j < pits.get(i).size(); ++j) {
+				Point p = pits.get(i).get(j);
+				if ((i&1) == 1) positions[cur++] = new Point(p.x + danceDis, p.y);
+				else positions[cur++] = p;
 			}
 		}
 		for (int i = numSlot - 1; i >= 0; --i) {
-			if ((i&1) == 1) {
-				for (int j = pits.get(i).size() - 1; j >= 0; --j) {
-					positions[cur++] = pits.get(i).get(j);
-				}
-			} else {
-				for (int j = pits.get(i).size() - 1; j >= 0; --j) {
-					Point p = pits.get(i).get(j);
-					positions[cur++] = new Point(p.x + danceDis, p.y);
-				}
+			for (int j = pits.get(i).size() - 1; j >= 0; --j) {
+				Point p = pits.get(i).get(j);
+				if ((i&1) == 0) positions[cur++] = new Point(p.x + danceDis, p.y);
+				else positions[cur++] = p;
 			}
 		}	
 		//printSnakePositions();

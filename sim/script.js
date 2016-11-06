@@ -99,7 +99,7 @@ function process(data)
 	// information text
 	var text = i;
 	if (wiser[i] || refresh < 0)
-	    text = text + ":" + wisdom[i] + ":" + score[i];
+	    //text = text + ":" + wisdom[i]; //+ ":" + score[i];
 	ctx.fillText(text, x_curr[i], y_curr[i] + 10);
 	// radius of influence
 	ctx.strokeStyle = ctx.fillStyle;

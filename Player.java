@@ -25,7 +25,15 @@ public class Player implements sqdance.sim.Player {
 	private int[][] danced; // cumulatived time in seconds for dance together
 
 	//======= data structures for snake strategy =========
+	//pit positions; don't change after initialization
 	private Point[] positions;
+	private Point[] partnerPos;
+
+
+	//player ids occupying each pit
+	private int[] player_ids;
+	//pit ids occupied by each player
+	private int[] pit_ids;
 
 	private int stayed;
 
@@ -33,13 +41,8 @@ public class Player implements sqdance.sim.Player {
 	private double danceDis = minDis + delta;
 	private double keepDis = danceDis + delta;
 
-	private class MetaData {
-		Point[] pos;
-		int partner;
-		Point[] partnerPos;
-	};
-
-	private MetaData[] data;
+	
+	//private MetaData[] data;
 	//====================== end =========================
 
 	public void init(int d, int room_side) {
@@ -81,19 +84,40 @@ public class Player implements sqdance.sim.Player {
 		}
 
 		positions = new Point[d];
+		
+
+		player_ids = new int[d];
+		partnerPos = new Point[d];
+		pit_ids	 = new int[d];
+		for(int i = 0; i < d; i++){
+			player_ids[i] = i;
+			pit_ids[i] = i;
+		} 
 		int cur = 0;
 		for (int i = 0; i < numSlot; ++i) {
 			for (int j = 0; j < pits.get(i).size(); ++j) {
 				Point p = pits.get(i).get(j);
-				if ((i&1) == 1) positions[cur++] = new Point(p.x + danceDis, p.y);
-				else positions[cur++] = p;
+				if ((i&1) == 1){
+					partnerPos[cur] = p;
+					positions[cur++] = new Point(p.x + danceDis, p.y);
+				}
+				else{
+					partnerPos[cur] = new Point(p.x + danceDis, p.y);
+					positions[cur++] = p;
+				}
 			}
 		}
 		for (int i = numSlot - 1; i >= 0; --i) {
 			for (int j = pits.get(i).size() - 1; j >= 0; --j) {
 				Point p = pits.get(i).get(j);
-				if ((i&1) == 0) positions[cur++] = new Point(p.x + danceDis, p.y);
-				else positions[cur++] = p;
+				if ((i&1) == 0){
+					partnerPos[cur] = p;
+					positions[cur++] = new Point(p.x + danceDis, p.y);
+				}
+				else{
+					partnerPos[cur] = new Point(p.x + danceDis, p.y);
+					positions[cur++] = p;
+				} 
 			}
 		}	
 		//printSnakePositions();
@@ -130,52 +154,75 @@ public class Player implements sqdance.sim.Player {
 		}
 		stayed = 0;
 
-		Point[] instructions = new Point[d];
-
-		Point[] swaped = new Point[d];
+		//Point[] instructions = new Point[d];
+		Point[] new_Positions = new Point[d];
+		int[] new_pit_ids = new int[d];
+		int[] new_player_ids = new int[d];
+		//move snake by one rotation
 		for (int i = 0; i < d; ++i) {
-			swaped[i] = new Point(0., 0.);
+			new_Positions[i] = new Point(positions[(pit_ids[i]+1)%d].x,positions[(pit_ids[i]+1)%d].y);
+			new_pit_ids[i] = (pit_ids[i] + 1)%d;
+			new_player_ids[(pit_ids[i]+1)%d] = i;
 		}
-		//no enjoyment last round, swap dancer across slot
+
+		//System.out.println("players in pit:");
+		//for(int p:new_pit_ids) System.out.print(p+",");
+		//System.out.println();
+
+		printSnakePositions();
+		System.out.println("===================");
+
+		//System.out.println("pits occupied by players:");
+		//for(int p:new_player_ids) System.out.print(p+",");
+		//System.out.println();
+
+		/*
+		boolean[] swaped = new boolean[d];
+		//won't have enjoyment next round, swap dancer across slot
 		for(int j = 0; j < d; j++){
-			if(enjoyment_gained[j] == 0 && swaped[j].x == 0 && swaped[j].y == 0){
-				Point curr = positions[j];
+			if(!swaped[j]){
 				for(int k = 0; k < d; k++){
-					if(k == j) continue;
-					Point swap = positions[k];
-					if(swap.y == curr.y && Math.abs(swap.x - curr.x) == danceDis){
-						swaped[k] = curr;
-						swaped[j] = swap;
-						//System.out.print("swaped " + (int)curr.x + "," + curr.y + "with:");
-						//System.out.println((int)swap.x + "," + swap.y);
-						break;
-					}
+					Point partner = new_Positions[k];
+					if(k == j || danced[j][k] < boredTime || !samepos(partner,partnerPos[new_pit_ids[j]])) continue;
+					swaped[j] = true;
+					swaped[k] = true;
+					System.out.println("swaped player: " + j + "," + k);
+					Point p1 = new_Positions[j];
+					Point p2 = partner;
+					instructions[j].add(new Point(p2.x-p1.x,p2.y-p1.y));
+					instructions[k].add(new Point(p1.x-p2.x,p1.y-p2.y));
+					int pit_id1 = new_pit_ids[j];
+					int pit_id2 = new_pit_ids[k];
+					new_pit_ids[j] = pit_id2;
+					new_pit_ids[k] = pit_id1;
+					new_player_ids[pit_id1] = k;
+					new_player_ids[pit_id2] = j;
+					break;
 				}
 			}
 		}
-		
-		//move snake by one rotation
-		//if swaped, move to swap position instead of next rotation
-		Point[] newPositions = new Point[d];
-		for (int i = 0; i < d; ++i) {
-			Point old_p = positions[i];
-			Point new_p = positions[(i+1)%d];
-			/*
-			if(swaped[i].x != 0 || swaped[i].y != 0){
-				new_p = swaped[i];
-			}
-			*/
-			instructions[i] = new Point(new_p.x-old_p.x,new_p.y-old_p.y);
-			newPositions[i] = new_p;
-		}
+		*/
+		pit_ids = new_pit_ids;
+		player_ids = new_player_ids;
+		return generateInstructions(dancers,new_Positions);
+	}
 
-		positions = newPositions;
-		return instructions;
+
+	private Point[] generateInstructions(Point[] oldPositions,Point[] new_Positions){
+		Point[] res = new Point[d];
+		for(int i = 0; i < d; i++){
+			res[i] = new Point(new_Positions[i].x-oldPositions[i].x,new_Positions[i].y-oldPositions[i].y);
+		}
+		return res;
+	}
+
+	private boolean samepos(Point p1,Point p2){
+		return p1.x == p2.x && p1.y == p2.y;
 	}
 
 	private void printSnakePositions() {
 		for (int i = 0; i < d; ++i) {
-			System.out.println(positions[i].x + "," + positions[i].y);
+			System.out.format("%.1f,%.1f\n",positions[i].x,positions[i].y);
 		}
 	}
 }

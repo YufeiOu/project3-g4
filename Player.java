@@ -3,119 +3,179 @@ package sqdance.g4;
 import sqdance.sim.Point;
 
 import java.io.*;
-import java.util.Random;
+import java.util.*;
+import java.lang.System.*;
 
 public class Player implements sqdance.sim.Player {
 
-    // E[i][j]: the remaining enjoyment player j can give player i
-    // -1 if the value is unknown (everything unknown upon initialization)
-    private int[][] E = null;
+	private static double eps = 1e-7;
 
-    // random generator
-    private Random random = null;
+	private double minDis = 0.5;
+	private double maxDis = 2.0;
+	private double safeDis = 0.1;
+	private int[] scorePround = {0, 6, 4, 3}; // kind of relation: 1 for soulmate, 2 for friend, 3 for stranger
+	private int boredTime = 120; // 2 minutes
 
-    // simulation parameters
-    private int d = -1;
-    private double room_side = -1;
+	private int d = -1;
+	private double room_side = -1;
 
-    private int[] idle_turns;
-    
-    // init function called once with simulation parameters before anything else is called
-    public void init(int d, int room_side) {
-	this.d = d;
-	this.room_side = (double) room_side;
-	random = new Random();
-	E = new int [d][d];
-	idle_turns = new int[d];
-	for (int i=0 ; i<d ; i++) {
-	    idle_turns[i] = 0;
-	    for (int j=0; j<d; j++) {
-		E[i][j] = i == j ? 0 : -1;
-	    }
+	private int[] soulmate; // initialize to -1
+	private int[][] relation; // kind of relation: 1 for soulmate, 2 for friend, 3 for stranger, initialize to -1
+
+	private int[][] danced; // cumulatived time in seconds for dance together
+
+	//======= data structures for snake strategy =========
+	private Point[] positions;
+
+	private int stayed;
+
+	private double delta = 1e-3;
+	private double danceDis = minDis + delta;
+	private double keepDis = danceDis + delta;
+
+	private class MetaData {
+		Point[] pos;
+		int partner;
+		Point[] partnerPos;
+	};
+
+	private MetaData[] data;
+	//====================== end =========================
+
+	public void init(int d, int room_side) {
+		this.d = d;
+		this.room_side = (double) room_side;
+		
+		//data structure initialization
+		soulmate = new int[d];
+		for (int i = 0; i < d; ++i) soulmate[i] = -1;
+
+		relation = new int[d][d];
+		danced = new int[d][d];
+		for (int i = 0; i < d; ++i){
+			for (int j = 0; j < d; ++j) {
+				relation[i][j] = -1;
+				danced[i][j] = 0;
+			}
+		}
+
+		this.stayed =  0;
+
+		//initialization for snake strategy
+		ArrayList<ArrayList<Point>> pits = new ArrayList<ArrayList<Point>>();
+		int numSlot = 0, numPit = 0;
+		for (double x = eps; x < room_side && numPit < d; x += danceDis + keepDis) {
+			pits.add(new ArrayList<Point>());
+			if ((numSlot&1) == 0) {
+				for (double y = eps; y < room_side && numPit < d; y += keepDis) {
+					pits.get(numSlot).add(new Point(x, y));
+					numPit += 2;
+				}
+			} else {
+				for (double y = room_side - eps; y > 0 && numPit < d; y -= keepDis) {
+					pits.get(numSlot).add(new Point(x, y));
+					numPit += 2;
+				}
+			}
+			++numSlot;
+		}
+
+		positions = new Point[d];
+		int cur = 0;
+		for (int i = 0; i < numSlot; ++i) {
+			for (int j = 0; j < pits.get(i).size(); ++j) {
+				Point p = pits.get(i).get(j);
+				if ((i&1) == 1) positions[cur++] = new Point(p.x + danceDis, p.y);
+				else positions[cur++] = p;
+			}
+		}
+		for (int i = numSlot - 1; i >= 0; --i) {
+			for (int j = pits.get(i).size() - 1; j >= 0; --j) {
+				Point p = pits.get(i).get(j);
+				if ((i&1) == 0) positions[cur++] = new Point(p.x + danceDis, p.y);
+				else positions[cur++] = p;
+			}
+		}	
+		//printSnakePositions();
 	}
-    }
 
-    // setup function called once to generate initial player locations
-    // note the dance caller does not know any player-player relationships, so order doesn't really matter in the Point[] you return. Just make sure your player is consistent with the indexing
-
-    public Point[] generate_starting_locations() {
-	Point[] L  = new Point [d];
-	for (int i = 0 ; i < d ; ++i) {
-	    int b = 1000 * 1000 * 1000;
-	    double x = random.nextInt(b + 1) * room_side / b;
-	    double y = random.nextInt(b + 1) * room_side / b;
-	    L[i] = new Point(x, y);
-	}	
-	return L;
-    }
-
-    // play function
-    // dancers: array of locations of the dancers
-    // scores: cumulative score of the dancers
-    // partner_ids: index of the current dance partner. -1 if no dance partner
-    // enjoyment_gained: integer amount (-5,0,3,4, or 6) of enjoyment gained in the most recent 6-second interval
-    public Point[] play(Point[] dancers, int[] scores, int[] partner_ids, int[] enjoyment_gained) {
-	Point[] instructions = new Point[d];
-	for (int i=0; i<d; i++) {
-	    int j = partner_ids[i];
-	    Point self = dancers[i];
-	    if (enjoyment_gained[i] > 0) { // previously had a dance partner
-		idle_turns[i] = 0;
-		Point dance_partner = dancers[j];
-		// update remaining available enjoyment
-		if (E[i][j] == -1 ) {
-		    E[i][j] = total_enjoyment(enjoyment_gained[i]) - enjoyment_gained[i];
-		}
-		else {
-		    E[i][j] -= enjoyment_gained[i];
-		}
-		// stay put and continue dancing if there is more to enjoy
-		if (E[i][j] > 0) {
-		    instructions[i] = new Point(0.0, 0.0);
-		    continue;
-		}
-	    }
-	    Point m = null;	    
-	    if (++idle_turns[i] > 21) { // if stuck at current position without enjoying anything
-		idle_turns[i] = 0;
-	    } else { // stay put if there's another potential dance partner in range
-		double closest_dist = Double.MAX_VALUE;
-		int closest_index = -1;
-		for (int t=0; t<d; t++) {
-		    // skip if no more to enjoy
-		    if (E[i][t] == 0) continue;
-		    // compute squared distance
-		    Point p = dancers[t];		
-		    double dx = self.x - p.x;
-		    double dy = self.y - p.y;
-		    double dd = dx * dx + dy * dy;
-		    // stay put and try to dance if new person around or more enjoyment remaining.		
-		    if (dd >= 0.25 && dd < 4.0) {
-			m = new Point(0.0, 0.0);
-			break;
-		    }
-		}
-	    }
-	    // move randomly if no move yet
-	    if (m == null) {
-		double dir = random.nextDouble() * 2 * Math.PI;
-		double dx = 1.9 * Math.cos(dir);
-		double dy = 1.9 * Math.sin(dir);
-		m = new Point(dx, dy);
-		if (!self.valid_movement(m, room_side))
-		    m = new Point(0,0);
-	    }
-	    instructions[i] = m;
+	public Point[] generate_starting_locations() {
+		return positions;
 	}
-	return instructions;
-    }
-    
-    private int total_enjoyment(int enjoyment_gained) {
-	switch (enjoyment_gained) {
-	case 3: return 60; // stranger
-	case 4: return 200; // friend
-	case 6: return 10800; // soulmate
-	default: throw new IllegalArgumentException("Not dancing with anyone...");
-	}	
-    }
+
+	public Point[] play(Point[] dancers, int[] scores, int[] partner_ids, int[] enjoyment_gained) {
+		Point[] stay = new Point[d];
+		for (int i = 0; i < d; ++i) {
+			stay[i] = new Point(0., 0.);
+		}
+
+		//first update partner information and culmulative time danced
+		for(int i = 0; i < d; i++){
+			if(enjoyment_gained[i] == 6){
+				soulmate[i] = partner_ids[i];
+				relation[i][partner_ids[i]] = 1;
+			}
+			else if(enjoyment_gained[i] == 4){
+				relation[i][partner_ids[i]] = 2;
+			}
+			else if(enjoyment_gained[i] == 3){
+				relation[i][partner_ids[i]] = 3;
+			}
+			danced[i][partner_ids[i]] += 6;
+		}
+
+		if(stayed < boredTime){
+			stayed += 6;
+			return stay;
+		}
+		stayed = 0;
+
+		Point[] instructions = new Point[d];
+
+		Point[] swaped = new Point[d];
+		for (int i = 0; i < d; ++i) {
+			swaped[i] = new Point(0., 0.);
+		}
+		//no enjoyment last round, swap dancer across slot
+		for(int j = 0; j < d; j++){
+			if(enjoyment_gained[j] == 0 && swaped[j].x == 0 && swaped[j].y == 0){
+				Point curr = positions[j];
+				for(int k = 0; k < d; k++){
+					if(k == j) continue;
+					Point swap = positions[k];
+					if(swap.y == curr.y && Math.abs(swap.x - curr.x) == danceDis){
+						swaped[k] = curr;
+						swaped[j] = swap;
+						//System.out.print("swaped " + (int)curr.x + "," + curr.y + "with:");
+						//System.out.println((int)swap.x + "," + swap.y);
+						break;
+					}
+				}
+			}
+		}
+		
+		//move snake by one rotation
+		//if swaped, move to swap position instead of next rotation
+		Point[] newPositions = new Point[d];
+		for (int i = 0; i < d; ++i) {
+			Point old_p = positions[i];
+			Point new_p = positions[(i+1)%d];
+			/*
+			if(swaped[i].x != 0 || swaped[i].y != 0){
+				new_p = swaped[i];
+			}
+			*/
+			instructions[i] = new Point(new_p.x-old_p.x,new_p.y-old_p.y);
+			newPositions[i] = new_p;
+		}
+
+		positions = newPositions;
+		return instructions;
+	}
+
+	private void printSnakePositions() {
+		for (int i = 0; i < d; ++i) {
+			System.out.println(positions[i].x + "," + positions[i].y);
+		}
+	}
 }

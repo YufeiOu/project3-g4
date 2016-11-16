@@ -110,6 +110,7 @@ public class Player implements sqdance.sim.Player {
 			else
 				actual_starting_locations[i] = findNearestActualPoint(starting_positions[i],starting_positions[i-1]);
 		}
+		this.state = 2;
 		return actual_starting_locations;
 	}
 
@@ -176,9 +177,30 @@ public class Player implements sqdance.sim.Player {
 	void swap(){
 		if (this.state == 1) {
 			this.state = 2;
-
+			for (int i = 0; i < this.target_single_shape.length; i++) {
+				if (i%2 == 0) {
+					int pit_id = this.target_single_shape[i];
+					int dancer_id = pits[pit_id].player_id;
+					dancers[dancer_id].next_pos = findNearestActualPoint(pits[pit_id],pits[pit_id].next);
+				} else {
+					int pit_id = this.target_single_shape[i];
+					int dancer_id = pits[pit_id].player_id;
+					dancers[dancer_id].next_pos = findNearestActualPoint(pits[pit_id],pits[pit_id].prev);
+				}
+			}
 		} else {
 			this.state = 1;
+			for (int i = 1; i < this.target_single_shape.length-1; i++) {
+				if (i%2 == 1) {
+					int pit_id = this.target_single_shape[i];
+					int dancer_id = pits[pit_id].player_id;
+					dancers[dancer_id].next_pos = findNearestActualPoint(pits[pit_id],pits[pit_id].next);
+				} else {
+					int pit_id = this.target_single_shape[i];
+					int dancer_id = pits[pit_id].player_id;
+					dancers[dancer_id].next_pos = findNearestActualPoint(pits[pit_id],pits[pit_id].prev);
+				}
+			}
 		}
 	}
 

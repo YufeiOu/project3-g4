@@ -27,7 +27,6 @@ public class Player implements sqdance.sim.Player {
 	public class Dancer{
 		int id = -1;
 		int soulmate = -1;
-		int honeymoon_pit = -1;
 		Point next_pos = null;
 		Point des_pos = null;
 		//only used by singles	
@@ -129,7 +128,7 @@ public class Player implements sqdance.sim.Player {
 		// first update partner information and culmulative time danced
 		ArrayList<Integer> new_couple_ids = updatePartnerInfo(partner_ids, enjoyment_gained);
 		if (true || this.connected && new_couple_ids.size() == 0) {
-			//swap();
+			swap();
 			//System.out.println("swaped");
 		}
 		else{
@@ -197,18 +196,41 @@ public class Player implements sqdance.sim.Player {
 	//modify the desination positions of active dancers;
 	void swap() {
 		for (int i = 0; i < this.target_single_shape.length; i++) {
-			if (i%2 == 0 && this.state == 1 || i%2 == 1 && i < this.target_single_shape.length-1 && this.state == 2) {
+			if (i%2 == 0 && this.state == 1 || i%2 == 1 && this.state == 2) {
 				int pit_id = this.target_single_shape[i];
 				int dancer_id = pits[pit_id].player_id;
-				dancers[dancer_id].next_pos = findNearestActualPoint(pits[pit_id].next.pos, pits[pit_id].pos);
-				dancers[dancer_id].pit_id = pits[pit_id].next.pit_id;
-			} else if (i%2 == 1 && this.state == 1 || i%2 == 0 && i > 0 && this.state == 2) {
+				
+				if (i==this.target_single_shape.length-1) {
+					System.out.println(pits[pit_id].pos.x -eps/3 + " " + pits[pit_id].pos.y);
+					dancers[dancer_id].next_pos = new Point(pits[pit_id].pos.x -eps/3, pits[pit_id].pos.y);
+					dancers[dancer_id].pit_id = pit_id;
+				} else {
+					int pit_id1 = this.target_single_shape[i+1];
+					int dancer_id1 = pits[pit_id1].player_id;
+					dancers[dancer_id].next_pos = findNearestActualPoint(pits[pit_id1].pos, pits[pit_id].pos);
+					dancers[dancer_id].pit_id = pit_id1;
+				}
+			} else if (i%2 == 1 && this.state == 1 || i%2 == 0 && this.state == 2) {
+
 				int pit_id = this.target_single_shape[i];
 				int dancer_id = pits[pit_id].player_id;
-				dancers[dancer_id].next_pos = findNearestActualPoint(pits[pit_id].prev.pos, pits[pit_id].pos);
-				dancers[dancer_id].pit_id = pits[pit_id].prev.pit_id;
+				
+				if (i==0) {
+					System.out.println(pits[pit_id].pos.x -eps/3 + " " + pits[pit_id].pos.y);
+					dancers[dancer_id].next_pos = new Point(pits[pit_id].pos.x -eps/3, pits[pit_id].pos.y);
+					dancers[dancer_id].pit_id = pit_id;
+				} else {
+					int pit_id1 = this.target_single_shape[i-1];
+					int dancer_id1 = pits[pit_id1].player_id;
+					dancers[dancer_id].next_pos = findNearestActualPoint(pits[pit_id1].pos, pits[pit_id].pos);
+					dancers[dancer_id].pit_id = pit_id1;
+				}
 			}
 		}
+		for (int i = 0; i < this.target_single_shape.length; i++) {
+			System.out.println(dancers[pits[this.target_single_shape[i]].player_id].next_pos.x + " " + dancers[pits[this.target_single_shape[i]].player_id].next_pos.y);
+		}
+		System.out.println("--------------------------------");
 		this.state = 3 - this.state;
 	}
 

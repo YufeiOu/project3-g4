@@ -134,10 +134,10 @@ public class Player implements sqdance.sim.Player {
 				// initialize curr_pos of couples
 				initializeCurrPosition(new_couple_ids);
 				// generate a sequence of pit indexes of de-coupled dancers
-				int[] newShape = genShape(new_soulmate_found);
+				int[] newShape = genShape(new_couple_ids.size());
 				// generate new_soulmate_destination
 				int[] soulmatePitIndex = findSoulmateIndex(newShape);
-				Point[] soulmateActualLocations = findSoulmateDestination(soulmatePitIndex)
+				Point[] soulmateActualLocations = findSoulmateDestination(soulmatePitIndex);
 				// update new_couple 
 				updateNewSoulmateDes(new_couple_ids, soulmateActualLocations);
 				foundCouples.addAll(new_couple_ids);
@@ -190,7 +190,7 @@ public class Player implements sqdance.sim.Player {
 	}
 
 	//modify the desination positions of active dancers;
-	void swap(void) {
+	void swap() {
 		for (int i = 0; i < this.target_single_shape.length; i++) {
 			if (i%2 == 0 && this.state == 1 || i%2 == 1 && i < this.target_single_shape.length-1 && this.state == 2) {
 				int pit_id = this.target_single_shape[i];
@@ -220,9 +220,9 @@ public class Player implements sqdance.sim.Player {
 			}
 	}
 
-	void initializeCurrPosition(int[] new_couple_ids) {
+	void initializeCurrPosition(ArrayList<Integer> new_couple_ids) {
 		for (int i=0; i<new_couple_ids.size(); i++) {
-			dancers[new_couple_ids[i]].next_pos = pits[dancers[new_couple_ids[i]].pit_id].pos;
+			dancers[new_couple_ids.get(i)].next_pos = pits[dancers[new_couple_ids.get(i)].pit_id].pos;
 		}
 	}
 
@@ -280,17 +280,17 @@ public class Player implements sqdance.sim.Player {
 	}
 
 	Point[] findSoulmateDestination(int[] soulmatePitIndex) {
-		Point[] soulmateActualLocations = new Point[soulmatePitIndex.size()];
-		for (int i=0; i<soulmatePitIndex.size(); i++) {
-			if (i%2==0) Point[i] = findNearestActualPoint(this.pits[soulmatePitIndex[i]].pos, this.pits[soulmatePitIndex[i+1]].pos);
-			else Point[i] = findNearestActualPoint(this.pits[soulmatePitIndex[i]].pos, this.pits[soulmatePitIndex[i-1]].pos);
+		Point[] soulmateActualLocations = new Point[soulmatePitIndex.length];
+		for (int i=0; i<soulmatePitIndex.length; i++) {
+			if (i%2==0) soulmateActualLocations[i] = findNearestActualPoint(this.pits[soulmatePitIndex[i]].pos, this.pits[soulmatePitIndex[i+1]].pos);
+			else soulmateActualLocations[i] = findNearestActualPoint(this.pits[soulmatePitIndex[i]].pos, this.pits[soulmatePitIndex[i-1]].pos);
 		}
 		return soulmateActualLocations;
 	}
 
 	void updateNewSoulmateDes(ArrayList<Integer> couple_ids, Point[] soulmateActualLocations) {
 		for (int i=0; i<couple_ids.size(); i++) {
-			this.dancers[couple_ids[i]].des_pos = soulmateActualLocations[i];
+			this.dancers[couple_ids.get(i)].des_pos = soulmateActualLocations[i];
 		}
 	}
 

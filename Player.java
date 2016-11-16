@@ -30,15 +30,16 @@ public class Player implements sqdance.sim.Player {
 		Point next_pos = null;
 
 		//only used by singles	
-		int curr_pit = -1;
+		int pit_id = -1;
 	}
 
 	//dancers never stay at pit, legal positions are up/down/left/right eps/3;
 	public class Pit{
 		Point pos = null;
-		Point prev = null;
-		Point next = null;
+		Pit prev = null;
+		Pit next = null;
 		int player_id = -1;
+		int pit_id = -1;
 	}
 
 	private Dancer[] dancers;
@@ -72,8 +73,7 @@ public class Player implements sqdance.sim.Player {
 		this.starting_positions = new Point[d];
 		this.pits = new Pit[d];
 		boolean odd = true;
-		Point prev = null;
-		Point curr = null;
+		Pit prev_pit = null;
 		double x = eps;
 		double y = eps;
 		double increment = 0.5 + eps;
@@ -85,15 +85,19 @@ public class Player implements sqdance.sim.Player {
 			else{
 				x += increment;
 			}
-			curr = new Point(x,y);
+			Point curr_pos = new Point(x,y);
+			Pit curr_pit = new Pit();
 			this.starting_positions[i] = curr;
-			this.pits[i] = new Pit();
-			this.pits[i].prev = prev;
-			this.pits[i].curr = curr;
-			prev = curr;
+			this.pits[i] = curr_pit;
+			if(prev != null) prev.next = curr_pit;
+			curr_pit.prev = prev_pit;
+			curr_pit.pos = curr_pos;
+			curr_pit.player_id = i;
+			curr_pit.pit_id = i;
+			prev_pit = curr_pit;
 			Dancer dancer = new Dancer();
 			dancer.id = i;
-			dancer.des_pit = i;
+			dacner.pid_id = i;
 			this.dancers[i] = dancer;
 		}
 	}
@@ -183,9 +187,37 @@ public class Player implements sqdance.sim.Player {
 
 	}
 
-	// update this.currShape, return if the this.currShape is connected;
-	// update dancers[].des_pit, call generateInstructions() to translate dancers.des_pit to actual move
+	// update single dancer's next position using target_single_shape, return true target_single_shape is connected;
 	boolean connect() {
+		int single_index = 0;
+		boolean connected = true;
+		for(int i = 0; i < d; i++){
+			if(dancers[i].soulmate != -1) continue;
+			int target_pit_id = this.target_single_shape[single_index++];
+			Pit curr_pit = pits[dancers[i].pit_id];
+			Pit pointer = curr_pit;
+			boolean stop = false;
+			while(!stop){
+				if(pointer.pit_id < target_pit_id){
+					pointer = pointer.next;
+				}
+				else if(pointer.pit_id > target_pit_id){
+					pointer = pointer.prev;
+				}
+				stop = distance(pointer.pos,curr_pit.pos) > 2 || pointer.pit_id == target_pit_id;
+			}
+			if(!samepos(pointer.pos,curr_pit.pos)) connected = false;
+			dancers[i].pit_id = pointer.pit_id;
+			dancers[i].next_pos = pointer.pos;
+			this.pits[pointer.pit_id].player_id = i;
+		}
+		return connected;
+	}
+
+	double distance(Point p1,Point p2){
+		double dx = p1.x - p2.x;
+		double dy = p1.y - p2.y;
+		return Math.sqrt(dx*dx+dy*dy);
 	}
 
 	// according to the information of the dancers, 
@@ -194,7 +226,12 @@ public class Player implements sqdance.sim.Player {
 	}
 
 	// generate instruction according to this.dancers
-	private Point[] generateInstructions(){
+	private Point[] generateInstructions(Point[] old_positions){
+		Point[] movement = new Point[this.d];
+		for(int i = 0; i < d; i++){
+			movement[i] = new Point(dancers[i].next_pos.x-old_positions[i].x,dancers[i].next_pos.y-old_positions[i].y);
+		}
+		return movement;
 	}
 
 	private boolean samepos(Point p1,Point p2){

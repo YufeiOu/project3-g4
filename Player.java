@@ -21,16 +21,16 @@ public class Player implements sqdance.sim.Player {
 
 	private int[] soulmate; // initialize to -1
 	private int[][] relation; // kind of relation: 1 for soulmate, 2 for friend, 3 for stranger, initialize to -1
-
 	private int[][] danced; // cumulatived time in seconds for dance together
-
-	private int stayed;
 
 	public class Dancer{
 		int id = -1;
 		int soulmate = -1;
-		int des_pit = -1;
+		int honeymoon_pit = -1;
 		Point next_pos = null;
+
+		//only used by singles	
+		int curr_pit = -1;
 	}
 
 	//dancers never stay at pit, legal positions are up/down/left/right eps/3;
@@ -38,12 +38,14 @@ public class Player implements sqdance.sim.Player {
 		Point pos = null;
 		Point prev = null;
 		Point next = null;
+		int player_id = -1;
 	}
 
 	private Dancer[] dancers;
 	private boolean connected;
 	private Point[] starting_positions;
 	private Pit[] pits;
+	private int[] target_single_shape; // a list of Pit indexes
 	//====================== end =========================
 
 	public void init(int d, int room_side) {
@@ -93,37 +95,37 @@ public class Player implements sqdance.sim.Player {
 			this.dancers[i] = dancer;
 		}
 	}
-}
 
-public Point[] generate_starting_locations() {
-	return this.starting_positions;
-}
+	public Point[] generate_starting_locations() {
+		return this.starting_positions;
+	}
 
 	public Point[] play(Point[] old_positions, int[] scores, int[] partner_ids, int[] enjoyment_gained) {
 		// first update partner information and culmulative time danced
 		boolean new_soulmate_found = updatePartnerInfo(partner_ids, enjoyment_gained);
-		if (connected && !new_soulmate_found) {
+		if (this.connected && !new_soulmate_found) {
 			swap();
 		}
 		else{
-			// generate a sequence of pit indexes of de-coupled dancers
-			genShape();
+			if (new_soulmate_found) {
+				// assert
+				this.connected = false;
+				// remove couples from this.currShape
+				//int[] holeShape = removeCouples();
+				// generate a sequence of pit indexes of de-coupled dancers
+				int[] newShape = genShape();
+				// generate new_soulmate_destination
+				//int[] soulmateShape = findSoulmateDestination();
+				// update 
+				this.target_single_shape = newShape;
+			}
 			//try to connect the dancers
-			connect();
+			this.connected = connect();
 		} 
 		move_couple();
 		//generate instructions using target positions and current positions
-		return generateInstructions(current_positions);
+		return generateInstructions(this.dancers);
 	}
-
-	//modify the desination positions of active dancers;
-	void swap(){
-
-	}
-
-
-
-
 
 	boolean updatePartnerInfo(int[] partner_ids, int[] enjoyment_gained) {
 		boolean found = false;
@@ -132,6 +134,7 @@ public Point[] generate_starting_locations() {
 				soulmate[i] = partner_ids[i];
 				if(relation[i][partner_ids[i]] != 1) found = true;
 				relation[i][partner_ids[i]] = 1;
+				dancers[i].soulmate = partner_ids[i];
 			}
 			else if(enjoyment_gained[i] == 4){
 				relation[i][partner_ids[i]] = 2;
@@ -140,17 +143,33 @@ public Point[] generate_starting_locations() {
 				relation[i][partner_ids[i]] = 3;
 			}
 			danced[i][partner_ids[i]] += 6;
+
 		}
 		return found;
 	}
 
+	//modify the desination positions of active dancers;
+	void swap(){
 
-	private Point[] generateInstructions(Point[] currentPositions){
-		Point[] res = new Point[d];
-		for(Dancer dancer:dancers){
-			res[i] = new Point(dancer.next_pos.x-currentPositions[i].x,dancer.next_pos.y-currentPositions[i].y);
-		}
-		return res;
+	}
+
+	// according to the this.dancers, calculate the destination indexes set of de-coupled dancers
+	int[] genShape(){
+
+	}
+
+	// update this.currShape, return if the this.currShape is connected;
+	// update dancers[].des_pit, call generateInstructions() to translate dancers.des_pit to actual move
+	boolean connect() {
+	}
+
+	// according to the information of the dancers, 
+	void move_couple() {
+
+	}
+
+	// generate instruction according to this.dancers
+	private Point[] generateInstructions(){
 	}
 
 	private boolean samepos(Point p1,Point p2){

@@ -116,16 +116,16 @@ public class Player implements sqdance.sim.Player {
 
 	public Point[] play(Point[] old_positions, int[] scores, int[] partner_ids, int[] enjoyment_gained) {
 		// first update partner information and culmulative time danced
-		boolean new_soulmate_found = updatePartnerInfo(partner_ids, enjoyment_gained);
-		if (this.connected && !new_soulmate_found) {
+		int new_soulmate_found = updatePartnerInfo(partner_ids, enjoyment_gained);
+		if (this.connected && new_soulmate_found > 0) {
 			swap();
 		}
 		else{
-			if (new_soulmate_found) {
+			if (new_soulmate_found > 0) {
 				// assert
 				this.connected = false;
 				// generate a sequence of pit indexes of de-coupled dancers
-				int[] newShape = genShape();
+				int[] newShape = genShape(new_soulmate_found);
 				// generate new_soulmate_destination
 				int[] soulmateShape = findSoulmateDestination();
 				// update target_single_shape
@@ -140,11 +140,11 @@ public class Player implements sqdance.sim.Player {
 	}
 
 	boolean updatePartnerInfo(int[] partner_ids, int[] enjoyment_gained) {
-		boolean found = false;
+		int found = 0;
 		for(int i = 0; i < d; i++){
 			if(enjoyment_gained[i] == 6){
 				soulmate[i] = partner_ids[i];
-				if(relation[i][partner_ids[i]] != 1) found = true;
+				if(relation[i][partner_ids[i]] != 1) ++found;
 				relation[i][partner_ids[i]] = 1;
 				dancers[i].soulmate = partner_ids[i];
 			}
@@ -205,8 +205,52 @@ public class Player implements sqdance.sim.Player {
 	}
 
 	// according to the this.dancers, calculate the destination indexes set of de-coupled dancers
-	int[] genShape(){
+	int[] genShape(int numNewCouple) {
+		ArrayList<int> cur = new ArrayList<int>();
+		for (int i = 0; i < d; ++i) {
+			if (dancers[i].soulmate == -1)
+				cur.add(dancers[i].pit_id);
+		}
 
+		Collections.sort(cur, new Comparator() {
+				public int Compare(int a, int b) {
+					if (pits[a].x < pits[b].x - eps) return 1;
+					if (pits[a].x < pits[b].x + eps) {
+						if (pits[a].y < pits[b].y) return 1;
+						if (pits[a].y > pits[b].y) return -1;
+					}
+					if (pits[a].x > pits[b].x) return -1;
+					return 0;
+				}
+				});
+
+		int[] res = new int[cur.size()];
+		for (int i = numNewCouple * 2; i < cur.size(); ++i) {
+			res[i - numNewCouple * 2] = cur[i];
+		}
+
+		Array.sort(res);
+		int tot = cur.size() - numNewCouple * 2;
+		int last = cur[numNewCouple * 2 - 1];
+		Point lastCouplePos(cur[last].x, cur[last].y);
+		for (int i = 1; i < cur.size() - numNewCouple * 2; ++i) {
+			for (int j = res[i - 1] + 1; j < res[i]; ++j) {
+				if (pits[j].x > lastCouplePos.x + eps ||
+					(pits[j].x > lastCouplePos.x - eps && pits[j].y > lastCouplePos.y + eps)) {
+					if (tot == cur.size()) throw "genShape error: number of holes is not as expected";
+					res[tot++] = j;
+				}
+			}
+		}
+		if (tot < cur.size()) {
+			for (int j = res[cur.size() - numNewCouple * 2 - 1] + 1; tot < cur.size(); ++j) {
+				if (pits[j].x > lastCouplePos.x + eps ||
+					(pits[j].x > lastCouplePos.x - eps && pits[j].y > lastCouplePos.y + eps)) {
+					res[tot++] = j;
+				}
+			}
+		}
+		return res;
 	}
 
 	// update single dancer's next position using target_single_shape, return true target_single_shape is connected;

@@ -184,6 +184,7 @@ public class Player implements sqdance.sim.Player {
 			if(!samepos(pointer.pos,curr_pit.pos)) connected = false;
 			dancers[i].pit_id = pointer.pit_id;
 			dancers[i].next_pos = pointer.pos;
+			this.pits[pointer.pit_id].player_id = i;
 		}
 		return connected;
 	}

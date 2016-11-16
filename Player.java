@@ -80,14 +80,9 @@ public class Player implements sqdance.sim.Player {
 		double y = eps;
 		double increment = 0.5 + eps;
 		int i = 0;
+		int sign = 1;
 		while(i<d){
-			int sign = (((i&1) == 1) ? 1: -1);
-			if(y + sign * increment <= this.room_side - eps && y + sign * increment >= eps){
-				y += sign * increment;
-			}
-			else{
-				x += increment;
-			}
+			//int sign = (((i&1) == 1) ? 1: -1);
 			Point curr_pos = new Point(x,y);
 			Pit curr_pit = new Pit();
 			this.starting_positions[i] = curr_pos;
@@ -103,6 +98,13 @@ public class Player implements sqdance.sim.Player {
 			dancer.id = i;
 			dancer.pit_id = i;
 			this.dancers[i] = dancer;
+			if(y + sign * increment <= this.room_side - eps && y + sign * increment >= eps){
+				y += sign * increment;
+			}
+			else{
+				x += increment;
+				sign = - sign;
+			}
 			i++;
 		}
 	}
@@ -116,16 +118,19 @@ public class Player implements sqdance.sim.Player {
 			else{
 				actual_starting_locations[i] = findNearestActualPoint(starting_positions[i],starting_positions[i-1]);
 			}
+			dancers[i].next_pos = actual_starting_locations[i];
 		}
-		this.state = 2;
+		//this.state = 2;
+		printPosition(actual_starting_locations);
 		return actual_starting_locations;
 	}
 
 	public Point[] play(Point[] old_positions, int[] scores, int[] partner_ids, int[] enjoyment_gained) {
 		// first update partner information and culmulative time danced
 		ArrayList<Integer> new_couple_ids = updatePartnerInfo(partner_ids, enjoyment_gained);
-		if (this.connected && new_couple_ids.size() == 0) {
-			swap();
+		if (true || this.connected && new_couple_ids.size() == 0) {
+			//swap();
+			//System.out.println("swaped");
 		}
 		else{
 			if (new_couple_ids.size() > 0) {
@@ -204,7 +209,7 @@ public class Player implements sqdance.sim.Player {
 				dancers[dancer_id].pit_id = pits[pit_id].prev.pit_id;
 			}
 		}
-		this.state = 3-this.state;
+		this.state = 3 - this.state;
 	}
 
 	class PitsComparator implements Comparator<Integer> {
@@ -348,9 +353,13 @@ public class Player implements sqdance.sim.Player {
 
 	// generate instruction according to this.dancers
 	private Point[] generateInstructions(Point[] old_positions){
-		Point[] movement = new Point[this.d];
+		Point[] movement = new Point[d];
 		for(int i = 0; i < d; i++){
+			//System.out.println("i: " + i);
 			movement[i] = new Point(dancers[i].next_pos.x-old_positions[i].x,dancers[i].next_pos.y-old_positions[i].y);
+
+
+			//if(i == 0 || i == 2 || i == 85 || i == 87) System.out.println(old_positions[i].x+","+old_positions[i].y);
 		}
 		return movement;
 	}
@@ -360,8 +369,13 @@ public class Player implements sqdance.sim.Player {
 	}
 
 	void printPosition(Point[] points){
+		for(int i = 0; i < d; i++){
+			if(i == 0 || i == 2 || i == 85 || i == 87) System.out.println(points[i].x+","+points[i].y);
+		}
+		/*
 		for(Point p:points){
 			System.out.println(p.x+","+p.y);
 		}
+		*/
 	}
 }

@@ -71,6 +71,7 @@ public class Player implements sqdance.sim.Player {
 
 		this.connected = true;
 		this.starting_positions = new Point[d];
+		this.target_single_shape = new int[d];
 		this.pits = new Pit[d];
 		this.dancers = new Dancer[d];
 		Pit prev_pit = null;
@@ -89,6 +90,7 @@ public class Player implements sqdance.sim.Player {
 			Point curr_pos = new Point(x,y);
 			Pit curr_pit = new Pit();
 			this.starting_positions[i] = curr_pos;
+			this.target_single_shape[i] = i;
 			this.pits[i] = curr_pit;
 			if(prev_pit != null) prev_pit.next = curr_pit;
 			curr_pit.prev = prev_pit;

@@ -30,7 +30,7 @@ public class Player implements sqdance.sim.Player {
 		Point next_pos = null;
 
 		//only used by singles	
-		int curr_pit = -1;
+		int pit_id = -1;
 	}
 
 	//dancers never stay at pit, legal positions are up/down/left/right eps/3;
@@ -95,7 +95,7 @@ public class Player implements sqdance.sim.Player {
 			prev_pit = curr_pit;
 			Dancer dancer = new Dancer();
 			dancer.id = i;
-			dacner.curr_pit = i;
+			dacner.pid_id = i;
 			this.dancers[i] = dancer;
 		}
 	}
@@ -168,24 +168,22 @@ public class Player implements sqdance.sim.Player {
 		boolean connected = true;
 		for(int i = 0; i < d; i++){
 			if(dancers[i].soulmate != -1) continue;
-			int target_pit_id = target_single_shape[single_index++];
-			if(target_pit_id == dancers[i].curr_pit) continue;
-
-			
-			boolean forward = dancers[i].curr_pit < target_pit_id;
-			Pit curr_pit = pits[dancers[i].curr_pit];
+			int target_pit_id = this.target_single_shape[single_index++];
+			Pit curr_pit = pits[dancers[i].pit_id];
 			Pit pointer = curr_pit;
-			while(distance(curr_pit.pos,pointer.pos) < 2){
-				if(forward){
+			boolean stop = false;
+			while(!stop){
+				if(pointer.pit_id < target_pit_id){
 					pointer = pointer.next;
 				}
-				else{
+				else if(pointer.pit_id > target_pit_id){
 					pointer = pointer.prev;
 				}
+				stop = distance(pointer.pos,curr_pit.pos) > 2 || pointer.pit_id == target_pit_id;
 			}
-
-			
-
+			if(!samepos(pointer.pos,curr_pit.pos)) connected = false;
+			dancers[i].pit_id = pointer.pit_id;
+			dancers[i].next_pos = pointer.pos;
 		}
 		return connected;
 	}

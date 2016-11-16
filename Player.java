@@ -22,13 +22,14 @@ public class Player implements sqdance.sim.Player {
 	private int[] soulmate; // initialize to -1
 	private int[][] relation; // kind of relation: 1 for soulmate, 2 for friend, 3 for stranger, initialize to -1
 	private int[][] danced; // cumulatived time in seconds for dance together
+	private ArrayList<Integer> foundCouples = new ArrayList<>();
 
 	public class Dancer{
 		int id = -1;
 		int soulmate = -1;
 		int honeymoon_pit = -1;
 		Point next_pos = null;
-
+		Point des_pos = null;
 		//only used by singles	
 		int pit_id = -1;
 	}
@@ -117,18 +118,22 @@ public class Player implements sqdance.sim.Player {
 
 	public Point[] play(Point[] old_positions, int[] scores, int[] partner_ids, int[] enjoyment_gained) {
 		// first update partner information and culmulative time danced
-		int new_soulmate_found = updatePartnerInfo(partner_ids, enjoyment_gained);
-		if (this.connected && new_soulmate_found > 0) {
+		ArrayList<Integer> new_couple_ids = updatePartnerInfo(partner_ids, enjoyment_gained);
+		if (this.connected && new_couple_ids.size() == 0) {
 			swap();
 		}
 		else{
-			if (new_soulmate_found > 0) {
+			if (new_couple_ids.size() > 0) {
 				// assert
 				this.connected = false;
 				// generate a sequence of pit indexes of de-coupled dancers
 				int[] newShape = genShape(new_soulmate_found);
 				// generate new_soulmate_destination
-				//int[] soulmateShape = findSoulmateDestination();
+				int[] soulmatePitIndex = findSoulmateIndex(newShape);
+				Point[] soulmateActualLocations = findSoulmateDestination(soulmatePitIndex)
+				// update new_couple 
+				updateNewSoulmateDes(new_couple_ids, soulmateActualLocations);
+				foundCouples.addAll(new_couple_ids);
 				// update target_single_shape
 				this.target_single_shape = newShape;
 			}
@@ -140,12 +145,15 @@ public class Player implements sqdance.sim.Player {
 		return generateInstructions(old_positions);
 	}
 
-	int updatePartnerInfo(int[] partner_ids, int[] enjoyment_gained) {
-		int found = 0;
+	ArrayList<Integer> updatePartnerInfo(int[] partner_ids, int[] enjoyment_gained) {
+		ArrayList<Integer> couple_ids = new ArrayList<>();
 		for(int i = 0; i < d; i++){
 			if(enjoyment_gained[i] == 6){
 				soulmate[i] = partner_ids[i];
-				if(relation[i][partner_ids[i]] != 1) ++found;
+				if(relation[i][partner_ids[i]] != 1 && relation[partner_ids[i]][i] != 1) {
+					couple_ids.add(i);
+					couple_ids.add(partner_ids[i]);
+				}
 				relation[i][partner_ids[i]] = 1;
 				dancers[i].soulmate = partner_ids[i];
 			}
@@ -158,7 +166,7 @@ public class Player implements sqdance.sim.Player {
 			danced[i][partner_ids[i]] += 6;
 
 		}
-		return found;
+		return couple_ids;
 	}
 
 	// a = (x,y) we want to find least distance between (x+eps/3, y) (x-eps/3, y) (x, y+eps/3) (x, y-eps/3) and b
@@ -175,34 +183,21 @@ public class Player implements sqdance.sim.Player {
 	}
 
 	//modify the desination positions of active dancers;
-	void swap(){
-		if (this.state == 1) {
-			this.state = 2;
-			for (int i = 0; i < this.target_single_shape.length; i++) {
-				if (i%2 == 0) {
-					int pit_id = this.target_single_shape[i];
-					int dancer_id = pits[pit_id].player_id;
-					dancers[dancer_id].next_pos = findNearestActualPoint(pits[pit_id].pos, pits[pit_id].next.pos);
-				} else {
-					int pit_id = this.target_single_shape[i];
-					int dancer_id = pits[pit_id].player_id;
-					dancers[dancer_id].next_pos = findNearestActualPoint(pits[pit_id].pos, pits[pit_id].prev.pos);
-				}
-			}
-		} else {
-			this.state = 1;
-			for (int i = 1; i < this.target_single_shape.length-1; i++) {
-				if (i%2 == 1) {
-					int pit_id = this.target_single_shape[i];
-					int dancer_id = pits[pit_id].player_id;
-					dancers[dancer_id].next_pos = findNearestActualPoint(pits[pit_id].pos, pits[pit_id].next.pos);
-				} else {
-					int pit_id = this.target_single_shape[i];
-					int dancer_id = pits[pit_id].player_id;
-					dancers[dancer_id].next_pos = findNearestActualPoint(pits[pit_id].pos, pits[pit_id].prev.pos);
-				}
+	void swap(void) {
+		for (int i = 0; i < this.target_single_shape.length; i++) {
+			if (i%2 == 0 && this.state == 1 || i%2 == 1 && i < this.target_single_shape.length-1 && this.state == 2) {
+				int pit_id = this.target_single_shape[i];
+				int dancer_id = pits[pit_id].player_id;
+				dancers[dancer_id].next_pos = findNearestActualPoint(pits[pit_id].next.pos, pits[pit_id].pos);
+				dancers[dancer_id].pit_id = pits[pit_id].next.pit_id;
+			} else if (i%2 == 1 && this.state == 1 || i%2 == 0 && i > 0 && this.state == 2) {
+				int pit_id = this.target_single_shape[i];
+				int dancer_id = pits[pit_id].player_id;
+				dancers[dancer_id].next_pos = findNearestActualPoint(pits[pit_id].prev.pos, pits[pit_id].pos);
+				dancers[dancer_id].pit_id = pits[pit_id].prev.pit_id;
 			}
 		}
+		this.state = 3-this.state;
 	}
 
 	// according to the this.dancers, calculate the destination indexes set of de-coupled dancers
@@ -254,6 +249,34 @@ public class Player implements sqdance.sim.Player {
 		return res;
 	}
 
+	int[] findSoulmateIndex(int[] newShape) {
+		int[] residual = new int[this.target_single_shape.length - newShape.length];
+		int j = 0;
+		int k = 0;
+		for (int i=0; i<this.target_single_shape.length; i++) {
+			if (target_single_shape[i] != newShape[j]) {
+				residual[k] = target_single_shape[i];
+				k ++;
+			}
+			else j++;
+		}
+		return residual;
+	}
+
+	Point[] findSoulmateDestination(int[] soulmatePitIndex) {
+		Point[] soulmateActualLocations = new Point[soulmatePitIndex.size()];
+		for (int i=0; i<soulmatePitIndex.size(); i++) {
+			if (i%2==0) Point[i] = findNearestActualPoint(this.pits[soulmatePitIndex[i]].pos, this.pits[soulmatePitIndex[i+1]].pos);
+			else Point[i] = findNearestActualPoint(this.pits[soulmatePitIndex[i]].pos, this.pits[soulmatePitIndex[i-1]].pos);
+		}
+		return soulmateActualLocations;
+	}
+
+	void updateNewSoulmateDes(ArrayList<Integer> couple_ids, Point[] soulmateActualLocations) {
+		for (int i=0; i<couple_ids.size(); i++) {
+			this.dancers[couple_ids[i]].des_pos = soulmateActualLocations[i];
+		}
+	}
 
 	// update single dancer's next position using target_single_shape, return true target_single_shape is connected;
 	boolean connect() {
@@ -290,7 +313,10 @@ public class Player implements sqdance.sim.Player {
 
 	// according to the information of the dancers, 
 	void move_couple() {
-
+		for (Integer index : foundCouples) {
+			Point currPosition = this.dancers[index].pos;
+			
+		}
 	}
 
 	// generate instruction according to this.dancers

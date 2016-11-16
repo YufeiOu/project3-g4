@@ -72,7 +72,7 @@ public class Player implements sqdance.sim.Player {
 		this.connected = true;
 		this.starting_positions = new Point[d];
 		this.pits = new Pit[d];
-		boolean odd = true;
+		this.dancers = new Dancer[d];
 		Pit prev_pit = null;
 		double x = eps;
 		double y = eps;
@@ -100,16 +100,19 @@ public class Player implements sqdance.sim.Player {
 			dancer.id = i;
 			dancer.pit_id = i;
 			this.dancers[i] = dancer;
+			i++;
 		}
 	}
 
 	public Point[] generate_starting_locations() {
 		Point[] actual_starting_locations = this.starting_positions;
 		for (int i = 0; i < d; i++) {
-			if (i%2 == 0) 
+			if (i%2 == 0){
 				actual_starting_locations[i] = findNearestActualPoint(starting_positions[i],starting_positions[i+1]);
-			else
+			}
+			else{
 				actual_starting_locations[i] = findNearestActualPoint(starting_positions[i],starting_positions[i-1]);
+			}
 		}
 		this.state = 2;
 		return actual_starting_locations;
@@ -307,5 +310,11 @@ public class Player implements sqdance.sim.Player {
 
 	private boolean samepos(Point p1,Point p2){
 		return Math.abs(p1.x - p2.x) < eps && Math.abs(p1.y - p2.y) < eps;
+	}
+
+	void printPosition(Point[] points){
+		for(Point p:points){
+			System.out.println(p.x+","+p.y);
+		}
 	}
 }

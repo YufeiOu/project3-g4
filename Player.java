@@ -46,12 +46,14 @@ public class Player implements sqdance.sim.Player {
 	private Point[] starting_positions;
 	private Pit[] pits;
 	private int[] target_single_shape; // a list of Pit indexes
+	private int state; // 1 represents 1-2 3-4 5-6, 2 represents 1 2-3 4-5 6
 	//====================== end =========================
 
 	public void init(int d, int room_side) {
 		//System.out.println("init");
 		this.d = d;
 		this.room_side = room_side;
+		this.state = 1;
 		
 		//data structure initialization
 		soulmate = new int[d];
@@ -97,7 +99,14 @@ public class Player implements sqdance.sim.Player {
 	}
 
 	public Point[] generate_starting_locations() {
-		return this.starting_positions;
+		Point[] actual_starting_locations = this.starting_positions;
+		for (int i = 0; i < d; i++) {
+			if (i%2 == 0) 
+				actual_starting_locations[i] = findNearestActualPoint(starting_positions[i],starting_positions[i+1]);
+			else
+				actual_starting_locations[i] = findNearestActualPoint(starting_positions[i],starting_positions[i-1]);
+		}
+		return actual_starting_locations;
 	}
 
 	public Point[] play(Point[] old_positions, int[] scores, int[] partner_ids, int[] enjoyment_gained) {
@@ -110,13 +119,11 @@ public class Player implements sqdance.sim.Player {
 			if (new_soulmate_found) {
 				// assert
 				this.connected = false;
-				// remove couples from this.currShape
-				//int[] holeShape = removeCouples();
 				// generate a sequence of pit indexes of de-coupled dancers
 				int[] newShape = genShape();
 				// generate new_soulmate_destination
-				//int[] soulmateShape = findSoulmateDestination();
-				// update 
+				int[] soulmateShape = findSoulmateDestination();
+				// update target_single_shape
 				this.target_single_shape = newShape;
 			}
 			//try to connect the dancers
@@ -148,9 +155,27 @@ public class Player implements sqdance.sim.Player {
 		return found;
 	}
 
+	// a = (x,y) we want to find least distance between (x+eps/3, y) (x-eps/3, y) (x, y+eps/3) (x, y-eps/3) and b
+	Point findNearestActualPoint(Pit a, Pit b) {
+		Point left = new Point(a.pos.x-eps/3,a.pos.y);
+		Point right = new Point(a.pos.x+eps/3,a.pos.y);
+		Point down = new Point(a.pos.x,a.pos.y-eps/3);
+		Point up = new Point(a.pos.x,a.pos.y+eps/3);
+		Point a_neighbor = left
+		if (distance(right,b) < distance(a_neighbor,b)) a_neighbor = right;
+		if (distance(down,b) < distance(a_neighbor,b)) a_neighbor = down;
+		if (distance(up,b) < distance(a_neighbor,b)) a_neighbor = up;
+		return a_neighbor;
+	}
+
 	//modify the desination positions of active dancers;
 	void swap(){
+		if (this.state == 1) {
+			this.state = 2;
 
+		} else {
+			this.state = 1;
+		}
 	}
 
 	// according to the this.dancers, calculate the destination indexes set of de-coupled dancers

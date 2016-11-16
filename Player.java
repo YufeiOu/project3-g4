@@ -166,7 +166,7 @@ public class Player implements sqdance.sim.Player {
 		Point right = new Point(a.pos.x+eps/3,a.pos.y);
 		Point down = new Point(a.pos.x,a.pos.y-eps/3);
 		Point up = new Point(a.pos.x,a.pos.y+eps/3);
-		Point a_neighbor = left
+		Point a_neighbor = left;
 		if (distance(right,b) < distance(a_neighbor,b)) a_neighbor = right;
 		if (distance(down,b) < distance(a_neighbor,b)) a_neighbor = down;
 		if (distance(up,b) < distance(a_neighbor,b)) a_neighbor = up;

@@ -131,6 +131,8 @@ public class Player implements sqdance.sim.Player {
 			if (new_couple_ids.size() > 0) {
 				// assert
 				this.connected = false;
+				// initialize curr_pos of couples
+				initializeCurrPosition(new_couple_ids);
 				// generate a sequence of pit indexes of de-coupled dancers
 				int[] newShape = genShape(new_soulmate_found);
 				// generate new_soulmate_destination
@@ -216,6 +218,12 @@ public class Player implements sqdance.sim.Player {
 				if (pits[a].pos.x > pits[b].pos.x) return -1;
 				return 0;
 			}
+	}
+
+	void initializeCurrPosition(int[] new_couple_ids) {
+		for (int i=0; i<new_couple_ids.size(); i++) {
+			dancers[new_couple_ids[i]].next_pos = pits[dancers[new_couple_ids[i]].pit_id].pos;
+		}
 	}
 
 	// according to the this.dancers, calculate the destination indexes set of de-coupled dancers
@@ -322,8 +330,19 @@ public class Player implements sqdance.sim.Player {
 	// according to the information of the dancers, 
 	void move_couple() {
 		for (Integer index : foundCouples) {
-			Point currPosition = this.dancers[index].pos;
-			
+			Point curr = this.dancers[index].next_pos;
+			Point des = this.dancers[index].des_pos;
+			this.dancers[index].next_pos = findNextPosition(curr, des);
+		}
+	}
+
+	Point findNextPosition(Point curr, Point des) {
+		if (distance(curr,des) < 2) return des;
+		else {
+			double x = des.x - curr.x;
+			double y = des.y-curr.y;
+			Point next = new Point(curr.x + (2-eps)*x/Math.sqrt(x*x+y*y), curr.y + (2-eps)*y/Math.sqrt(x*x+y*y));
+			return next;
 		}
 	}
 

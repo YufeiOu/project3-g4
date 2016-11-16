@@ -205,40 +205,43 @@ public class Player implements sqdance.sim.Player {
 		}
 	}
 
+	class PitsComparator implements Comparator<Integer> {
+		@Override
+			public int compare(Integer a, Integer b) {
+				if (pits[a].pos.x < pits[b].pos.x - eps) return 1;
+				if (pits[a].pos.x < pits[b].pos.x + eps) {
+					if (pits[a].pos.y < pits[b].pos.y) return 1;
+					if (pits[a].pos.y > pits[b].pos.y) return -1;
+				}
+				if (pits[a].pos.x > pits[b].pos.x) return -1;
+				return 0;
+			}
+	}
+
 	// according to the this.dancers, calculate the destination indexes set of de-coupled dancers
 	int[] genShape(int numNewCouple) {
-		ArrayList<Integer> cur = new ArrayList<>();
+		ArrayList<Integer> cur = new ArrayList<Integer>();
 		for (int i = 0; i < d; ++i) {
 			if (dancers[i].soulmate == -1)
 				cur.add(dancers[i].pit_id);
 		}
 
-		Collections.sort(cur, new Comparator() {
-				public int Compare(int a, int b) {
-					if (pits[a].pos.x < pits[b].pos.x - eps) return 1;
-					if (pits[a].pos.x < pits[b].pos.x + eps) {
-						if (pits[a].pos.y < pits[b].pos.y) return 1;
-						if (pits[a].pos.y > pits[b].pos.y) return -1;
-					}
-					if (pits[a].pos.x > pits[b].pos.x) return -1;
-					return 0;
-				}
-				});
+		Collections.sort(cur, new PitsComparator());
 
 		int[] res = new int[cur.size()];
 		for (int i = numNewCouple * 2; i < cur.size(); ++i) {
 			res[i - numNewCouple * 2] = cur.get(i);
 		}
 
-		Array.sort(res);
+		Arrays.sort(res);
 		int tot = cur.size() - numNewCouple * 2;
 		int last = cur.get(numNewCouple * 2 - 1);
-		Point lastCouplePos = new Point(cur.get(last).pos.x, cur.get(last).pos.y);
+		Point lastCouplePos = new Point(pits[last].pos.x, pits[last].pos.y);
 		for (int i = 1; i < cur.size() - numNewCouple * 2; ++i) {
 			for (int j = res[i - 1] + 1; j < res[i]; ++j) {
 				if (pits[j].pos.x > lastCouplePos.x + eps ||
 					(pits[j].pos.x > lastCouplePos.x - eps && pits[j].pos.y > lastCouplePos.y + eps)) {
-					if (tot == cur.size()) throw "genShape error: number of holes is not as expected";
+					if (tot == cur.size()) System.out.println("genShape error: number of holes is not as expected");
 					res[tot++] = j;
 				}
 			}

@@ -23,6 +23,7 @@ public class Player implements sqdance.sim.Player {
 	private int[][] relation; // kind of relation: 1 for soulmate, 2 for friend, 3 for stranger, initialize to -1
 	private int[][] danced; // cumulatived time in seconds for dance together
 	private ArrayList<Integer> foundCouples = new ArrayList<>();
+	private int stay = 0;
 
 	public class Dancer{
 		int id = -1;
@@ -31,6 +32,11 @@ public class Player implements sqdance.sim.Player {
 		Point des_pos = null;
 		//only used by singles	
 		int pit_id = -1;
+
+		public Dancer(int id,int pit_id){
+			this.id = id;
+			this.pit_id = pit_id;
+		}
 	}
 
 	//dancers never stay at pit, legal positions are up/down/left/right eps/3;
@@ -72,43 +78,85 @@ public class Player implements sqdance.sim.Player {
 		this.connected = true;
 		this.starting_positions = new Point[d];
 		this.target_single_shape = new int[d];
-		this.pits = new Pit[d];
+		this.pits = new Pit[1600];
 		this.dancers = new Dancer[d];
 		Pit prev_pit = null;
 		double x = eps;
 		double y = eps;
 		double increment = 0.5 + eps;
 		int i = 0;
+		int old_i = -1;
 		int sign = 1;
-		while(i<d){
-			//int sign = (((i&1) == 1) ? 1: -1);
-			Point curr_pos = new Point(x,y);
-			Pit curr_pit = new Pit();
-			this.starting_positions[i] = curr_pos;
-			this.target_single_shape[i] = i;
-			this.pits[i] = curr_pit;
-			if(prev_pit != null) prev_pit.next = curr_pit;
-			curr_pit.prev = prev_pit;
-			curr_pit.pos = curr_pos;
-			curr_pit.player_id = i;
-			curr_pit.pit_id = i;
-			prev_pit = curr_pit;
-			Dancer dancer = new Dancer();
-			dancer.id = i;
-			dancer.pit_id = i;
-			this.dancers[i] = dancer;
-			if(y + sign * increment <= this.room_side - eps && y + sign * increment >= eps){
-				y += sign * increment;
-			}
-			else{
+
+		double x_min = eps;
+		double x_max = this.room_side;
+		double y_min = eps;
+		double y_max = this.room_side;
+		//create the pits in a spiral fashion
+		while(old_i != i){
+			//go right
+			old_i = i;
+			while(x + safeDis < x_max){
+				prev_pit = addPit(prev_pit,new Point(x,y),i++);
 				x += increment;
-				sign = - sign;
 			}
-			i++;
+			x = prev_pit.pos.x;
+			y += increment;
+			x_max = x;
+
+			//go down
+			while(y + safeDis < y_max){
+				prev_pit = addPit(prev_pit,new Point(x,y),i++);
+				y += increment;
+			}
+			y = prev_pit.pos.y; 
+			x -= increment;
+			y_max = y;
+
+			//go left
+			while(x - safeDis > x_min){
+				prev_pit = addPit(prev_pit,new Point(x,y),i++);
+				x -= increment;
+			}
+			x = prev_pit.pos.x; 
+			y -= increment;
+			x_min = x;
+
+			//go up
+			while(y - safeDis > y_min){
+				prev_pit = addPit(prev_pit,new Point(x,y),i++);
+				y -= increment;
+			}
+			y = prev_pit.pos.y;
+			x += increment;
+			y_min = y;
+		}
+
+
+		//put players in pits
+		for(int j = 0; j < d; j++){
+			this.dancers[j] = new Dancer(j,j);
+			this.pits[j].player_id = j;
+			this.starting_positions[j] = this.pits[j].pos;
 		}
 	}
 
+	//add pit number i;
+	//return reference to current pit
+	private Pit addPit(Pit prev_pit,Point curr_pos,int i){
+		//System.out.println(curr_pos.x + "," + curr_pos.y);
+		Pit curr_pit = new Pit();
+		this.pits[i] = curr_pit;
+		if(prev_pit != null) prev_pit.next = curr_pit;
+		curr_pit.prev = prev_pit;
+		curr_pit.pos = curr_pos;
+		return curr_pit;
+	}
+
+
+
 	public Point[] generate_starting_locations() {
+		/*
 		Point[] actual_starting_locations = this.starting_positions;
 		for (int i = 0; i < d; i++) {
 			if (i%2 == 0){
@@ -121,14 +169,24 @@ public class Player implements sqdance.sim.Player {
 		}
 		//this.state = 2;
 		printPosition(actual_starting_locations);
-		return actual_starting_locations;
+		*/
+		printPosition(this.starting_positions);
+		return this.starting_positions;
 	}
 
 	public Point[] play(Point[] old_positions, int[] scores, int[] partner_ids, int[] enjoyment_gained) {
 		// first update partner information and culmulative time danced
 		ArrayList<Integer> new_couple_ids = updatePartnerInfo(partner_ids, enjoyment_gained);
 		if (true || this.connected && new_couple_ids.size() == 0) {
-			swap();
+			if(this.stay >= boredTime){
+				swap();
+				this.stay = 0;
+			}
+			else{
+				this.stay += 6;
+			}
+			
+
 			//System.out.println("swaped");
 		}
 		else{
@@ -201,7 +259,7 @@ public class Player implements sqdance.sim.Player {
 				int dancer_id = pits[pit_id].player_id;
 				
 				if (i==this.target_single_shape.length-1) {
-					System.out.println(pits[pit_id].pos.x -eps/3 + " " + pits[pit_id].pos.y);
+					//System.out.println(pits[pit_id].pos.x -eps/3 + " " + pits[pit_id].pos.y);
 					dancers[dancer_id].next_pos = new Point(pits[pit_id].pos.x -eps/3, pits[pit_id].pos.y);
 					dancers[dancer_id].pit_id = pit_id;
 				} else {
@@ -216,7 +274,7 @@ public class Player implements sqdance.sim.Player {
 				int dancer_id = pits[pit_id].player_id;
 				
 				if (i==0) {
-					System.out.println(pits[pit_id].pos.x -eps/3 + " " + pits[pit_id].pos.y);
+					//System.out.println(pits[pit_id].pos.x -eps/3 + " " + pits[pit_id].pos.y);
 					dancers[dancer_id].next_pos = new Point(pits[pit_id].pos.x -eps/3, pits[pit_id].pos.y);
 					dancers[dancer_id].pit_id = pit_id;
 				} else {
@@ -227,10 +285,12 @@ public class Player implements sqdance.sim.Player {
 				}
 			}
 		}
+		/*
 		for (int i = 0; i < this.target_single_shape.length; i++) {
 			System.out.println(dancers[pits[this.target_single_shape[i]].player_id].next_pos.x + " " + dancers[pits[this.target_single_shape[i]].player_id].next_pos.y);
 		}
 		System.out.println("--------------------------------");
+		*/
 		this.state = 3 - this.state;
 	}
 
@@ -378,8 +438,8 @@ public class Player implements sqdance.sim.Player {
 		Point[] movement = new Point[d];
 		for(int i = 0; i < d; i++){
 			//System.out.println("i: " + i);
-			movement[i] = new Point(dancers[i].next_pos.x-old_positions[i].x,dancers[i].next_pos.y-old_positions[i].y);
-
+			//movement[i] = new Point(dancers[i].next_pos.x-old_positions[i].x,dancers[i].next_pos.y-old_positions[i].y);
+			movement[i] = new Point(0,0);
 
 			//if(i == 0 || i == 2 || i == 85 || i == 87) System.out.println(old_positions[i].x+","+old_positions[i].y);
 		}
@@ -392,7 +452,7 @@ public class Player implements sqdance.sim.Player {
 
 	void printPosition(Point[] points){
 		for(int i = 0; i < d; i++){
-			if(i == 0 || i == 2 || i == 85 || i == 87) System.out.println(points[i].x+","+points[i].y);
+			if(i == 39) System.out.println(points[i].x+","+points[i].y);
 		}
 		/*
 		for(Point p:points){

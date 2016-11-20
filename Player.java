@@ -25,6 +25,10 @@ public class Player implements sqdance.sim.Player {
 	private int couples_found = 0;
 	private int stay = 6;
 
+	private static int SMALL_NUMBER_OF_DANCERS = 100;
+	private static int MEDIAN_NUMBER_OF_DANCERS = 1560;
+	private static int LARGE_NUMBER_OF_DANCERS = 100000;
+
 	public class Dancer{
 		int id = -1;
 		int soulmate = -1;
@@ -74,7 +78,17 @@ public class Player implements sqdance.sim.Player {
 				danced[i][j] = 0;
 			}
 		}
+		if (this.d <= SMALL_NUMBER_OF_DANCERS)
+			return findCoupleInit();
+		else if (this.d <= MEDIAN_NUMBER_OF_DANCERS)
+			return danceAndSwapInit();
+		else if (this.d <= LARGE_NUMBER_OF_DANCERS)
+			return shengyingInit();
+		else
+			return dummyInit();
+	}
 
+	private void findCoupleInit() {
 		this.connected = true;
 		this.starting_positions = new Point[d];
 		this.target_single_shape = new int[d];
@@ -179,6 +193,17 @@ public class Player implements sqdance.sim.Player {
 	}
 
 	public Point[] play(Point[] old_positions, int[] scores, int[] partner_ids, int[] enjoyment_gained) {
+		if (this.d <= SMALL_NUMBER_OF_DANCERS)
+			return findCouplePlay(old_positions, scores, partner_ids, enjoyment_gained);
+		else if (this.d <= MEDIAN_NUMBER_OF_DANCERS)
+			return danceAndSwapPlay(old_positions, scores, partner_ids, enjoyment_gained);
+		else if (this.d <= LARGE_NUMBER_OF_DANCERS)
+			return shengyingPlay(old_positions, scores, partner_ids, enjoyment_gained);
+		else
+			return dummyPlay(old_positions, scores, partner_ids, enjoyment_gained);
+	}
+
+	private Point[] findCouplePlay(Point[] old_positions, int[] scores, int[] partner_ids, int[] enjoyment_gained) {
 		// first update partner information and culmulative time danced
 		if (this.connected && updatePartnerInfo(partner_ids, enjoyment_gained)) {
 			if(this.stay > this.boredTime){

@@ -92,7 +92,7 @@ public class Player implements sqdance.sim.Player {
 	private void fixDancerPositions() {
 		// binary search the scale of the auditorium and stage
 		boolean fitin = false;
-		int l = 1, r = 100;
+		int l = 1, r = 5;
 		while (l < r) {
 			int mid = (l + r) >> 1;
 			boolean ret = arrangePosition(mid);
@@ -101,6 +101,7 @@ public class Player implements sqdance.sim.Player {
 		System.out.println("*************** numCol: " + l);
 		if (!arrangePosition(l)) {
 			System.out.println("************** change to crowd auditorium");
+			boredTime = 6;
 			arrangePositionCrowdAuditorium();
 		}
 	}
@@ -196,7 +197,8 @@ public class Player implements sqdance.sim.Player {
 
 				double xleft = xrange * i;
 				double xright = xleft + xrange;
-				if (xright > roomSide - eps) break;
+				if (xleft + (minDis + delta * 2) * 1.5 > roomSide - eps) break;
+				xright = Math.min(xright, roomSide - eps);
 				
 				// arrange positions of two dancer pairs in stage
 				double x1 = xleft + (minDis + delta * 2) / 2.;

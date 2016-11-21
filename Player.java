@@ -58,11 +58,39 @@ public class Player implements sqdance.sim.Player {
 	private int state; // 1 represents 0-1 2-3 4-5, 2 represents 0 1-2 3-4 5
 	//====================== end =========================
 
+	//============= parameter for dance in turn strategy ========================
+	private int numDancer = -1;
+	private int roomSide = -1;
+
+	private int numRowAuditoriumBlock = 10;
+
+	private int[] sequence;
+	private Point[] position;
+
+	private int timeStamp = 0;
+
+
 	public void init(int d, int room_side) {
 		this.d = d;
 		this.room_side = room_side;
-		
-		
+
+		if (d < 1483) init_normal();
+		else init_exchangeStage(d, room_side);
+	}
+
+	public Point[] generate_starting_locations() {
+		if (d < 1483) return generate_starting_locations_normal();
+		else return generate_starting_locations_exchangeStage();
+	}
+
+	public Point[] play(Point[] old_positions, int[] scores, int[] partner_ids, int[] enjoyment_gained) {
+		if (d < 1483) return play_normal(old_positions, scores, partner_ids, enjoyment_gained);
+		else return play_exchangeStage(old_positions, scores, partner_ids, enjoyment_gained);
+	}
+
+	// =================== strategy when d is not so large ===================
+
+	private void init_normal() {
 		//data structure initialization
 
 		this.relation = new int[d][d];
@@ -150,10 +178,9 @@ public class Player implements sqdance.sim.Player {
 		}
 		this.state = 2;
 		//printPit();
-
 	}
 
-	public Point[] generate_starting_locations() {
+	private Point[] generate_starting_locations_normal() {
 		this.starting_positions = new Point[this.d];
 		for(int j = 0; j < d; j++){
 			this.starting_positions[j] = this.dancers[j].next_pos;
@@ -161,7 +188,7 @@ public class Player implements sqdance.sim.Player {
 		return this.starting_positions;
 	}
 
-	public Point[] play(Point[] old_positions, int[] scores, int[] partner_ids, int[] enjoyment_gained) {
+	private Point[] play_normal(Point[] old_positions, int[] scores, int[] partner_ids, int[] enjoyment_gained) {
 		updatePartnerInfo(partner_ids,enjoyment_gained);
 		this.last_positions = old_positions;
 		
@@ -365,5 +392,230 @@ public class Player implements sqdance.sim.Player {
 
 	private boolean samepos(Point p1,Point p2){
 		return Math.abs(p1.x - p2.x) < this.delta && Math.abs(p1.y - p2.y) < this.delta;
+	}
+
+	//============ ExchangeStage Strategy for large number of dancers===================
+
+	private void init_exchangeStage(int d, int room_side) {
+		delta = 1e-4; boredTime = 60;
+
+		numDancer = d; roomSide = room_side;
+		// initialize position
+		position = new Point[d + 10];
+		fixDancerPositions();
+		// initialize sequence
+		sequence = new int[d];
+		for (int i = 0; i < d; ++i) {
+			sequence[i] = i;
+		}
+	}
+
+	private Point[] generate_starting_locations_exchangeStage() {
+		Point[] res = new Point[numDancer];
+		for (int i = 0; i < numDancer; ++i) {
+			res[sequence[i]] = position[i];
+		}
+		return res;
+	}
+
+	private Point[] play_exchangeStage(Point[] old_positions, int[] scores, int[] partner_ids, int[] enjoyment_gained) {
+		timeStamp += 6;
+		Point[] res = new Point[numDancer];
+
+		if (timeStamp % boredTime == 0) {
+
+			sequenceSwap2();
+			for (int i = 0; i < numDancer; ++i) {
+				res[sequence[i]] = new Point(position[i].x - old_positions[sequence[i]].x,
+						position[i].y - old_positions[sequence[i]].y);
+			}
+
+		} else {
+
+			for (int i = 0; i < numDancer; ++i)
+				res[i] = new Point(0, 0);
+
+		}
+		return res;
+	}
+
+	private void sequenceSwap2() {
+		for (int i = 0; i + 1 < numDancer; i += 2) {
+			int tmp = sequence[i];
+			sequence[i] = sequence[i + 1];
+			sequence[i + 1] = tmp;
+		}
+
+		for (int i = 1; i + 1 < numDancer; i += 2) {
+			int tmp = sequence[i];
+			sequence[i] = sequence[i + 1];
+			sequence[i + 1] = tmp;
+		}
+	}
+
+	private void fixDancerPositions() {
+		// binary search the scale of the auditorium and stage
+		boolean fitin = false;
+		int l = 1, r = 5;
+		while (l < r) {
+			int mid = (l + r) >> 1;
+			boolean ret = arrangePosition(mid);
+			if (ret) r = mid; else l = mid + 1;
+		}
+		System.out.println("*************** numCol: " + l);
+		if (!arrangePosition(l)) {
+			System.out.println("************** change to crowd auditorium");
+			boredTime = 6;
+			arrangePositionCrowdAuditorium();
+		}
+	}
+
+	private boolean arrangePosition(int numCol) {
+		double yAudRange = (safeDis + delta) * (numCol - 1) + delta * 2;
+		double yStageRange = (minDis + delta) * 2 + delta;
+		double xrange = (safeDis + delta) * numRowAuditoriumBlock + delta;
+
+		int cur = 0;
+		for (int j = 0; ; ++j) {
+			int indexl = cur;
+
+			double yleft = j * (yAudRange + yStageRange);
+			double yright = yleft + (yAudRange + yStageRange);
+			if (yleft + yAudRange + (minDis + delta) + delta > roomSide - eps) break;
+
+			for (int i = 0; ; ++i) {
+
+				double xleft = i * xrange;
+				double xright = xleft + xrange;
+				if (xleft + (minDis + delta) * 1.5 + delta > roomSide - eps) break;
+				
+				// arrange two positions in stage
+				Point tmp = new Point(xleft + (minDis + delta) / 2., yleft + yAudRange + (minDis + delta));
+				if (!inside(tmp)) return false;
+				position[cur++] = tmp;
+
+				tmp = new Point(tmp.x + (minDis + delta), tmp.y);
+				if (!inside(tmp)) return false;
+				position[cur++] = tmp;
+				if (cur >= numDancer) break;
+
+				// arrange positions in auditorium
+				double y = yleft + delta;
+				for (int col = 0; col < numCol && y < yright - eps; ++col) {
+					double x = xleft + (safeDis + delta) / 2.;
+					for (int row = 0; row < numRowAuditoriumBlock && x < xright - eps; ++row) {
+						
+						tmp = new Point(x, y);
+						if (!inside(tmp)) break;
+						position[cur++] = tmp;
+						if (cur >= numDancer) break;
+
+						x += safeDis + delta;
+					}
+					if (cur >= numDancer) break;
+					y += safeDis + delta;
+				}
+				if (cur >= numDancer) break;
+			}
+
+			int indexr = cur - 1;
+
+			if (j % 2 == 1) {
+				double maxX = 0.;
+				for (int k = indexl; k <= (indexl + indexr) / 2; ++k) {
+					maxX = Math.max(maxX, position[k].x);
+
+					Point tmp = position[k];
+					position[k] = position[indexl + indexr - k];
+					position[indexl + indexr - k] = tmp;
+
+					maxX = Math.max(maxX, position[k].x);
+				}
+
+				double shift = roomSide - maxX; 
+				for (int k = indexl; k <= indexr; ++k) {
+					position[k] = new Point(position[k].x + shift, position[k].y);
+				}
+			}
+			if (cur >= numDancer) return true;
+		}
+		if (cur < numDancer) return false;
+		return true;
+	}
+
+	private void arrangePositionCrowdAuditorium() {
+		double yrange = (minDis + delta * 2.) * 3.;
+		double xrange = (minDis + delta) + (minDis + delta * 2) + delta;
+
+		int numBlock = (int)((roomSide - eps) / yrange) * (int)((roomSide - eps) / xrange);
+		int numPitAuditorium = ((numDancer - 1) / numBlock) + 1 - 4;
+
+		int cnt = 0;
+		for (int j = 0; ; ++j) {
+			int indexl = cnt;
+
+			double yleft = yrange * j;
+			double yright = yleft + yrange;
+
+			for (int i = 0; ; ++i) {
+
+				double xleft = xrange * i;
+				double xright = xleft + xrange;
+				if (xleft + (minDis + delta * 2) * 1.5 > roomSide - eps) break;
+				xright = Math.min(xright, roomSide - eps);
+				
+				// arrange positions of two dancer pairs in stage
+				double x1 = xleft + (minDis + delta * 2) / 2.;
+				double x2 = x1 + minDis + delta;
+				double y1 = yleft + (minDis + delta * 2);
+				double y2 = y1 + (minDis + delta * 2);
+
+				position[cnt++] = new Point(x1, y1);
+				position[cnt++] = new Point(x2, y1);
+				position[cnt++] = new Point(x1, y2);
+				position[cnt++] = new Point(x2, y2);
+
+				if (cnt >= numDancer) break;
+
+				// arrange positions in crowd auditorium
+				int done = 0;
+				for (double x = xleft; x < xright; x += safeDis + delta, ++done) {
+					position[cnt++] = new Point(x, yleft);
+					if (cnt >= numDancer) break;
+				}
+				if (cnt >= numDancer) break;
+
+				for (int k = done; k < numPitAuditorium; ++k) {
+					position[cnt++] = new Point(xright, yleft);
+				}
+			}
+
+			int indexr = cnt - 1;
+
+			if (j % 2 == 1) {
+				double maxX = 0.;
+				for (int k = indexl; k <= (indexl + indexr) / 2; ++k) {
+					maxX = Math.max(maxX, position[k].x);
+
+					Point tmp = position[k];
+					position[k] = position[indexl + indexr - k];
+					position[indexl + indexr - k] = tmp;
+
+					maxX = Math.max(maxX, position[k].x);
+				}
+
+				double shift = roomSide - maxX; 
+				for (int k = indexl; k <= indexr; ++k) {
+					position[k] = new Point(position[k].x + shift, position[k].y);
+				}
+			}
+
+			if (cnt >= numDancer) return;
+		}
+	}
+
+	private boolean inside(Point p) {
+		if (p.x < eps || p.x > roomSide - eps || p.y < eps || p.y > roomSide - eps) return false;
+		return true;
 	}
 }

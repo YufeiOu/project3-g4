@@ -161,6 +161,11 @@ public class Player implements sqdance.sim.Player {
 					position[k] = position[indexl + indexr - k];
 					position[indexl + indexr - k] = tmp;
 				}
+
+				double shift = roomSide - position[indexl].x;
+				for (int k = indexl; k <= indexr; ++k) {
+					position[k] = new Point(position[k].x + shift, position[k].y);
+				}
 			}
 			if (cur >= numDancer) return true;
 		}
@@ -221,6 +226,11 @@ public class Player implements sqdance.sim.Player {
 					Point tmp = position[k];
 					position[k] = position[indexl + indexr - k];
 					position[indexl + indexr - k] = tmp;
+				}
+
+				double shift = roomSide - position[indexl].x;
+				for (int k = indexl; k <= indexr; ++k) {
+					position[k] = new Point(position[k].x + shift, position[k].y);
 				}
 			}
 			if (cnt >= numDancer) return;

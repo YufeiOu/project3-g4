@@ -59,7 +59,6 @@ public class Player implements sqdance.sim.Player {
 	//====================== end =========================
 
 	public void init(int d, int room_side) {
-		//System.out.println("init");
 		this.d = d;
 		this.room_side = room_side;
 		
@@ -202,7 +201,6 @@ public class Player implements sqdance.sim.Player {
 					dancers[partner_ids[i]].pit_id = this.pits.length - 2 - this.couples_found;
 					this.connected = false;
 					this.couples_found += 2;
-					//System.out.println("dancer " + i + " soulmate is " + partner_ids[i]);
 				}
 				relation[i][partner_ids[i]] = 1;
 				relation[partner_ids[i]][i] = 1;
@@ -247,7 +245,6 @@ public class Player implements sqdance.sim.Player {
 			return;
 		for (int i = 0; i < remain_singles; i++) {
 			int dancer_id = findDancer(i);
-			System.out.println(dancer_id + " -------------------------------");
 			if (i%2 == 0 && this.state == 1 || i%2 == 1 && this.state == 2) {
 				if (i == remain_singles - 1) {
 					dancers[dancer_id].next_pos = new Point(pits[i].pos.x -this.delta/3, pits[i].pos.y);
@@ -266,12 +263,6 @@ public class Player implements sqdance.sim.Player {
 				}
 			}
 		}
- 		
- 		for (int i = 0; i < remain_singles; i++) {
- 			System.out.println(dancers[pits[i].pit_id].next_pos.x + " " + dancers[pits[i].pit_id].next_pos.y);
- 		}
- 		System.out.println("--------------------------------");
- 		
  		this.state = 3 - this.state;
 	}
 
@@ -362,30 +353,17 @@ public class Player implements sqdance.sim.Player {
 		Point[] movement = new Point[d];
 		for(int i = 0; i < d; i++){
 			movement[i] = new Point(dancers[i].next_pos.x-old_positions[i].x,dancers[i].next_pos.y-old_positions[i].y);
-			//movement[i] = new Point(0,0);
 			if(movement[i].x * movement[i].x + movement[i].y * movement[i].y > 4){
 				System.out.println("dancer " + i + " move too far");
 				System.out.println("soulmate: " + dancers[i].soulmate);
 				System.out.println("connected? " + this.connected);
-			} 
-			//System.out.println(movement[i].x+","+movement[i].y);
+				movement[i] = new Point(0,0);
+			}
 		}
-		//System.out.println("=======================");
 		return movement;
 	}
 
 	private boolean samepos(Point p1,Point p2){
 		return Math.abs(p1.x - p2.x) < this.delta && Math.abs(p1.y - p2.y) < this.delta;
-	}
-
-	void printPosition(){
-		for(int i = 0; i < d; i++){
-			//System.out.println("player " + i + " will move to: " + dancers[i].next_pos.x+","+dancers[i].next_pos.y);
-		}
-		/*
-		for(Point p:points){
-			System.out.println(p.x+","+p.y);
-		}
-		*/
 	}
 }

@@ -15,7 +15,7 @@ public class Player implements sqdance.sim.Player {
 	private double maxDis = 2.0;
 	private double safeDis = 0.1;
 	private int[] scorePround = {0, 6, 4, 3}; // kind of relation: 1 for soulmate, 2 for friend, 3 for stranger
-	private int boredTime = 6; // 6 seconds
+	private int boredTime = 12; // 6 seconds
 
 	private int d = -1;
 	private int room_side = -1;
@@ -167,7 +167,12 @@ public class Player implements sqdance.sim.Player {
 		this.last_positions = old_positions;
 		
 		if(stay < boredTime){
+			Point[] movement = new Point[this.d];
 			this.stay += 6;
+			for (int i=0; i<this.d; i++) {
+				movement[i]= new Point(0.,0.);
+			}
+			return movement;
 		}
 		else if(this.connected){
 			swap();
@@ -197,7 +202,7 @@ public class Player implements sqdance.sim.Player {
 					dancers[partner_ids[i]].pit_id = this.pits.length - 2 - this.couples_found;
 					this.connected = false;
 					this.couples_found += 2;
-					System.out.println("dancer " + i + " soulmate is " + partner_ids[i]);
+					//System.out.println("dancer " + i + " soulmate is " + partner_ids[i]);
 				}
 				relation[i][partner_ids[i]] = 1;
 				relation[partner_ids[i]][i] = 1;
@@ -228,7 +233,7 @@ public class Player implements sqdance.sim.Player {
 	}
 
 	int findDancer(int pit_id){
-		for(int i = 0; i < d; i++){
+		for(int i = d-1; i >=0; i--){
 			if(this.dancers[i].pit_id == pit_id) return i;
 		}
 		return -1;
@@ -237,55 +242,37 @@ public class Player implements sqdance.sim.Player {
 
 	//modify the desination positions of active dancers;
 	void swap() {
-		boolean[] swaped = new boolean[d];
-		//assign pit ids to dancers base on last round's partner ids
-		//this.state is this round's state
-		int last_state = 3 - this.state;
-		for(int i = 0; i < d; i++){
-			//ignore soulmates
-			if(dancers[i].soulmate != -1) continue;
-			boolean next = (last_state == 1 && i%2 == 0) || (last_state == 2 && i%2 != 0);
-			int pit_id = this.dancers[i].pit_id;
-			if(next){
-				pit_id++;
-			}
-			else{
-				pit_id--;
-			}
-			int last_partner = findDancer(pit_id);
-			
-			if(last_partner != -1){
-				int curr = dancers[i].pit_id;
-				int swap = dancers[last_partner].pit_id;
-				dancers[i].pit_id = swap;
-				dancers[last_partner].pit_id = curr;
-				swaped[i] = true;
-				swaped[last_partner] = true;
+		int remain_singles = this.d - this.couples_found;
+		if (remain_singles == 0) 
+			return;
+		for (int i = 0; i < remain_singles; i++) {
+			int dancer_id = findDancer(i);
+			System.out.println(dancer_id + " -------------------------------");
+			if (i%2 == 0 && this.state == 1 || i%2 == 1 && this.state == 2) {
+				if (i == remain_singles - 1) {
+					dancers[dancer_id].next_pos = new Point(pits[i].pos.x -this.delta/3, pits[i].pos.y);
+					dancers[dancer_id].pit_id = i;
+				} else {
+					dancers[dancer_id].next_pos = findNearestActualPoint(pits[i+1].pos, pits[i].pos);
+					dancers[dancer_id].pit_id = i+1;
+				}
+			} else if (i%2 == 1 && this.state == 1 || i%2 == 0 && this.state == 2) {
+				if (i==0) {
+					dancers[dancer_id].next_pos = new Point(pits[i].pos.x -this.delta/3, pits[i].pos.y);
+					dancers[dancer_id].pit_id = i;
+				} else {
+					dancers[dancer_id].next_pos = findNearestActualPoint(pits[i-1].pos, pits[i].pos);
+					dancers[dancer_id].pit_id = i-1;
+				}
 			}
 		}
-
-		//then, move pairs closer according to odd/even rounds
-		for(int i = 0; i < d; i++){
-			if(dancers[i].soulmate != -1) continue;
-			Pit my_pit = this.pits[dancers[i].pit_id];
-			Pit partner_pit = null;
-			Pit next = my_pit.pit_id < this.pits.length -1 ? this.pits[my_pit.pit_id+1] : null;
-			Pit prev = my_pit.pit_id > 0 ? this.pits[my_pit.pit_id-1] : null;
-			if(this.state == 1){
-				partner_pit = my_pit.pit_id%2 == 0 ? next: prev;
-			}
-			else{
-				partner_pit = my_pit.pit_id%2 == 0 ? prev : next;
-			}
-
-			if(partner_pit != null){
-				dancers[i].next_pos = findNearestActualPoint(my_pit.pos,partner_pit.pos);
-			} 
-			else{
-				dancers[i].next_pos = my_pit.pos;
-			}
-		}
-		this.state = 3 - this.state;
+ 		
+ 		for (int i = 0; i < remain_singles; i++) {
+ 			System.out.println(dancers[pits[i].pit_id].next_pos.x + " " + dancers[pits[i].pit_id].next_pos.y);
+ 		}
+ 		System.out.println("--------------------------------");
+ 		
+ 		this.state = 3 - this.state;
 	}
 
 

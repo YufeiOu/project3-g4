@@ -116,13 +116,13 @@ public class Player implements sqdance.sim.Player {
 
 			double yleft = j * (yAudRange + yStageRange);
 			double yright = yleft + (yAudRange + yStageRange);
-			if (yright > roomSide - eps) break;
+			if (yleft + yAudRange + (minDis + delta) + delta > roomSide - eps) break;
 
 			for (int i = 0; ; ++i) {
 
 				double xleft = i * xrange;
 				double xright = xleft + xrange;
-				if (xright > roomSide - eps) break;
+				if (xleft + (minDis + delta) * 1.5 + delta > roomSide - eps) break;
 				
 				// arrange two positions in stage
 				Point tmp = new Point(xleft + (minDis + delta) / 2., yleft + yAudRange + (minDis + delta));
@@ -141,7 +141,7 @@ public class Player implements sqdance.sim.Player {
 					for (int row = 0; row < numRowAuditoriumBlock && x < xright - eps; ++row) {
 						
 						tmp = new Point(x, y);
-						if (!inside(tmp)) return false;
+						if (!inside(tmp)) break;
 						position[cur++] = tmp;
 						if (cur >= numDancer) break;
 
@@ -156,13 +156,18 @@ public class Player implements sqdance.sim.Player {
 			int indexr = cur - 1;
 
 			if (j % 2 == 1) {
+				double maxX = 0.;
 				for (int k = indexl; k <= (indexl + indexr) / 2; ++k) {
+					maxX = Math.max(maxX, position[k].x);
+
 					Point tmp = position[k];
 					position[k] = position[indexl + indexr - k];
 					position[indexl + indexr - k] = tmp;
+
+					maxX = Math.max(maxX, position[k].x);
 				}
 
-				double shift = roomSide - position[indexl].x;
+				double shift = roomSide - maxX; 
 				for (int k = indexl; k <= indexr; ++k) {
 					position[k] = new Point(position[k].x + shift, position[k].y);
 				}
@@ -222,17 +227,23 @@ public class Player implements sqdance.sim.Player {
 			int indexr = cnt - 1;
 
 			if (j % 2 == 1) {
+				double maxX = 0.;
 				for (int k = indexl; k <= (indexl + indexr) / 2; ++k) {
+					maxX = Math.max(maxX, position[k].x);
+
 					Point tmp = position[k];
 					position[k] = position[indexl + indexr - k];
 					position[indexl + indexr - k] = tmp;
+
+					maxX = Math.max(maxX, position[k].x);
 				}
 
-				double shift = roomSide - position[indexl].x;
+				double shift = roomSide - maxX; 
 				for (int k = indexl; k <= indexr; ++k) {
 					position[k] = new Point(position[k].x + shift, position[k].y);
 				}
 			}
+
 			if (cnt >= numDancer) return;
 		}
 	}

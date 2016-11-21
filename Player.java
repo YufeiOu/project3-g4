@@ -15,7 +15,7 @@ public class Player implements sqdance.sim.Player {
 	private double maxDis = 2.0;
 	private double safeDis = 0.1;
 	private int[] scorePround = {0, 6, 4, 3}; // kind of relation: 1 for soulmate, 2 for friend, 3 for stranger
-	private int boredTime = 12; // 6 seconds
+	private int boredTime = 6; // 6 seconds
 
 	private int d = -1;
 	private int room_side = -1;
@@ -24,7 +24,9 @@ public class Player implements sqdance.sim.Player {
 	private int[][] danced; // cumulatived time in seconds for dance together
 	private int couples_found = 0;
 	private int stay = 0;
-	
+	private boolean single_all_the_way = false;
+
+
 	public class Dancer{
 		int id = -1;
 		int soulmate = -1;
@@ -91,6 +93,8 @@ public class Player implements sqdance.sim.Player {
 	// =================== strategy when d is not so large ===================
 
 	private void init_normal() {
+		//data structure initialization
+		this.single_all_the_way = this.d > 550;
 		//data structure initialization
 
 		this.relation = new int[d][d];
@@ -177,10 +181,11 @@ public class Player implements sqdance.sim.Player {
 			this.dancers[j].next_pos = findNearestActualPoint(my_pos,partner_pos);
 		}
 		this.state = 2;
-		//printPit();
+
+		if(single_all_the_way) this.boredTime = 120;
 	}
 
-	private Point[] generate_starting_locations_normal() {
+	public Point[] generate_starting_locations_normal() {
 		this.starting_positions = new Point[this.d];
 		for(int j = 0; j < d; j++){
 			this.starting_positions[j] = this.dancers[j].next_pos;
@@ -188,7 +193,7 @@ public class Player implements sqdance.sim.Player {
 		return this.starting_positions;
 	}
 
-	private Point[] play_normal(Point[] old_positions, int[] scores, int[] partner_ids, int[] enjoyment_gained) {
+	public Point[] play_normal(Point[] old_positions, int[] scores, int[] partner_ids, int[] enjoyment_gained) {
 		updatePartnerInfo(partner_ids,enjoyment_gained);
 		this.last_positions = old_positions;
 		
@@ -216,6 +221,7 @@ public class Player implements sqdance.sim.Player {
 	//update dancer relations based on enjoyment gained;
 	//also arrange couple's destination honeymoon pit number, set them close to each other 
 	void updatePartnerInfo(int[] partner_ids, int[] enjoyment_gained) {
+		if(single_all_the_way) return;
 		for(int i = 0; i < d; i++){
 			if(enjoyment_gained[i] == 6){
 				if(relation[i][partner_ids[i]] != 1) {

@@ -25,7 +25,7 @@ public class Player implements sqdance.sim.Player {
 	private int couples_found = 0;
 	private int stay = 0;
 	private boolean single_all_the_way = false;
-
+	private int normal_limit = 1600;
 
 	public class Dancer{
 		int id = -1;
@@ -76,17 +76,17 @@ public class Player implements sqdance.sim.Player {
 		this.d = d;
 		this.room_side = room_side;
 
-		if (d < 1483) init_normal();
+		if (d <= normal_limit) init_normal();
 		else init_exchangeStage(d, room_side);
 	}
 
 	public Point[] generate_starting_locations() {
-		if (d < 1483) return generate_starting_locations_normal();
+		if (d <= normal_limit) return generate_starting_locations_normal();
 		else return generate_starting_locations_exchangeStage();
 	}
 
 	public Point[] play(Point[] old_positions, int[] scores, int[] partner_ids, int[] enjoyment_gained) {
-		if (d < 1483) return play_normal(old_positions, scores, partner_ids, enjoyment_gained);
+		if (d <= normal_limit) return play_normal(old_positions, scores, partner_ids, enjoyment_gained);
 		else return play_exchangeStage(old_positions, scores, partner_ids, enjoyment_gained);
 	}
 
@@ -94,7 +94,7 @@ public class Player implements sqdance.sim.Player {
 
 	private void init_normal() {
 		//data structure initialization
-		this.single_all_the_way = this.d > 550;
+		this.single_all_the_way = this.d > 2000;
 		//data structure initialization
 
 		this.relation = new int[d][d];
@@ -107,7 +107,7 @@ public class Player implements sqdance.sim.Player {
 
 
 		this.connected = true;
-		this.pits = new Pit[1483];
+		this.pits = new Pit[normal_limit];
 		this.dancers = new Dancer[d];
 		this.still = new Point[d];
 
@@ -123,10 +123,10 @@ public class Player implements sqdance.sim.Player {
 		int old_i = -1;
 		int sign = 1;
 
-		double x_min = this.delta;
-		double x_max = this.room_side;
+		double x_min = this.delta - safeDis;
+		double x_max = this.room_side + safeDis;
 		double y_min = this.delta;
-		double y_max = this.room_side;
+		double y_max = this.room_side + safeDis;
 
 		//create the pits in a spiral fashion
 		while(old_i != i){

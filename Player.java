@@ -26,6 +26,7 @@ public class Player implements sqdance.sim.Player {
 	private int stay = 0;
 	private boolean single_all_the_way = false;
 	private int normal_limit = 1600;
+	private int single_limit = 960;
 
 	public class Dancer{
 		int id = -1;
@@ -94,7 +95,7 @@ public class Player implements sqdance.sim.Player {
 
 	private void init_normal() {
 		//data structure initialization
-		this.single_all_the_way = this.d > 2000;
+		this.single_all_the_way = this.d > this.single_limit;
 		//data structure initialization
 
 		this.relation = new int[d][d];
@@ -196,6 +197,7 @@ public class Player implements sqdance.sim.Player {
 	public Point[] play_normal(Point[] old_positions, int[] scores, int[] partner_ids, int[] enjoyment_gained) {
 		updatePartnerInfo(partner_ids,enjoyment_gained);
 		this.last_positions = old_positions;
+
 		move_couple();
 		if(!this.connected) {
 			connect();
@@ -207,7 +209,6 @@ public class Player implements sqdance.sim.Player {
 			}
 			else{
 				swap();
-				this.stay = 0;
 			}
 		}
 			
@@ -219,6 +220,7 @@ public class Player implements sqdance.sim.Player {
 	//also arrange couple's destination honeymoon pit number, set them close to each other 
 	void updatePartnerInfo(int[] partner_ids, int[] enjoyment_gained) {
 		if(single_all_the_way) return;
+		int new_couples = 0;
 		for(int i = 0; i < d; i++){
 			if(enjoyment_gained[i] == 6){
 				if(relation[i][partner_ids[i]] != 1) {
@@ -231,6 +233,7 @@ public class Player implements sqdance.sim.Player {
 					dancers[partner_ids[i]].pit_id = this.pits.length - 2 - this.couples_found;
 					this.connected = false;
 					this.couples_found += 2;
+					new_couples += 2;
 				}
 				relation[i][partner_ids[i]] = 1;
 				relation[partner_ids[i]][i] = 1;
@@ -244,6 +247,7 @@ public class Player implements sqdance.sim.Player {
 			}
 			danced[i][partner_ids[i]] += 6;
 		}
+		//if(new_couples != 0) System.out.println("new couples: " + new_couples);
 	}
 
 	// a = (x,y) we want to find least distance between (x+this.delta/3, y) (x-this.delta/3, y) (x, y+this.delta/3) (x, y-this.delta/3) and b
@@ -282,7 +286,7 @@ public class Player implements sqdance.sim.Player {
 		int remain_singles = this.d - this.couples_found;
 		for (int pit_id = 0; pit_id < remain_singles; pit_id++) {
 			int dancer_id = findDancer(pit_id);
-			if(dancer_id == -1 || dancers[dancer_id].soulmate != -1) continue;
+			if(dancers[dancer_id].soulmate != -1) continue;
 			int next_pit = getNextPit(pit_id);
 			if(next_pit == -1){
 				dancers[dancer_id].next_pos = new Point(pits[pit_id].pos.x, pits[pit_id].pos.y);
@@ -294,6 +298,7 @@ public class Player implements sqdance.sim.Player {
 			}
 		}
  		this.state = 3 - this.state;
+ 		this.stay = 0;
 	}
 
 
@@ -309,6 +314,7 @@ public class Player implements sqdance.sim.Player {
 
 	// update single dancer's next position, shrink everyone to the head of the snake;
 	void connect() {
+		int[] supposed_pit_num = new int[d];
 		this.stay = 0;
 		int target_pit_id = 0;
 		this.connected = true;
@@ -339,20 +345,22 @@ public class Player implements sqdance.sim.Player {
 				else if(pointer.pit_id > target_pit_id){
 					pointer = getPrev(pointer);
 				}
-				stop = distance(pointer.pos,curr_pos) > 2 || pointer.pit_id == target_pit_id;
+				stop = distance(pointer.pos,curr_pos) > 2 || pointer.pit_id == target_pit_id || findDancer(pointer.pit_id) != -1;
 			}
-			if(distance(pointer.pos,curr_pos) > 2){
+			if(distance(pointer.pos,curr_pos) > 2 || findDancer(pointer.pit_id) != -1){
 				pointer = prev;
 			}
 			dancers[dancer_id].pit_id = pointer.pit_id;
 			dancers[dancer_id].next_pos = pointer.pos;
 			this.connected = this.connected && pointer.pit_id == target_pit_id;
+			supposed_pit_num[dancer_id] = pointer.pit_id;
 			target_pit_id++;
 		}
-		/*
+
+		boolean swap_and_dance = true;
+		
 		//after arranged pits, see if it is possible to swap all the dancers in this round
 		if(this.connected){
-			boolean swap_and_dance = true;
 			Point[] next_pos = new Point[d];
 			int[] next_pit_id = new int[d];
 			for (int i = 0; i < d; i++) {
@@ -361,12 +369,13 @@ public class Player implements sqdance.sim.Player {
 				int next_pit = getNextPit(curr_pit);
 				if(next_pit != -1){
 					next_pos[i] = findNearestActualPoint(pits[next_pit].pos, pits[curr_pit].pos);
-					swap_and_dance = swap_and_dance && distance(next_pos[i],this.last_positions[i]) < 2;
+					next_pit_id[i] = next_pit;
 				}
 				else{
 					next_pos[i] = dancers[i].next_pos;
 					next_pit_id[i] = dancers[i].pit_id;
 				}
+				swap_and_dance = swap_and_dance && distance(next_pos[i],this.last_positions[i]) < 2;
 			}
 			if(swap_and_dance){
 				for(int i = 0; i < d; i++){
@@ -375,15 +384,9 @@ public class Player implements sqdance.sim.Player {
 					dancers[i].pit_id = next_pit_id[i];
 				}
 				this.state = 3 - this.state;
-				this.stay = 6;
+				this.stay = 0;
 			}
 		}
-		*/
-
-		for(int i = 0; i < d; i++){
-			if(dancers[i].next_pos == null) System.out.println("i: " + i);
-		}
-		
 	}
 
 	//calculate Euclidean distance between two points

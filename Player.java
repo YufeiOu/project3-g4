@@ -438,7 +438,7 @@ public class Player implements sqdance.sim.Player {
 	//============ ExchangeStage Strategy for large number of dancers===================
 
 	private void init_exchangeStage(int d, int room_side) {
-		delta = 1e-4; boredTime = 60;
+		delta = 1e-4; boredTime = 120;
 
 		numDancer = d; roomSide = room_side;
 		// initialize position
@@ -496,17 +496,20 @@ public class Player implements sqdance.sim.Player {
 
 	private void fixDancerPositions() {
 		// binary search the scale of the auditorium and stage
-		boolean fitin = false;
+		if (arrangePositionCrowdAuditorium()) return;
+		
+		System.out.println("*************** only one row stage **************");
 		int l = 1, r = 5;
 		while (l < r) {
 			int mid = (l + r) >> 1;
 			boolean ret = arrangePosition(mid);
 			if (ret) r = mid; else l = mid + 1;
 		}
-		System.out.println("*************** numCol: " + l);
+		boredTime = Math.max(120 - 24 * (l - 1), 12);
+		System.out.println("*************** numCol: " + l + "***************");
 		if (!arrangePosition(l)) {
-			System.out.println("************** change to crowd auditorium");
-			boredTime = 6;
+			System.out.println("************** change to crowd auditorium *****************");
+			boredTime = 12;
 			arrangePositionCrowdAuditorium();
 		}
 	}
@@ -515,8 +518,14 @@ public class Player implements sqdance.sim.Player {
 		double yAudRange = (safeDis + delta) * (numCol - 1) + delta * 2;
 		double yStageRange = (minDis + delta) * 2 + delta;
 		double xrange = (safeDis + delta) * numRowAuditoriumBlock + delta;
+		double yrange = yAudRange + yStageRange;
+
+		int numBlock = (int)((roomSide - eps) / xrange) * (int)((roomSide - eps) / yrange);
+		int numPitAuditorium = ((numDancer - 1) / numBlock) + 1 - 2;
+		int residual = numDancer - (numPitAuditorium + 2 - 1) * numBlock;
 
 		int cur = 0;
+		int curBlock = 0;
 		for (int j = 0; ; ++j) {
 			int indexl = cur;
 
@@ -525,6 +534,8 @@ public class Player implements sqdance.sim.Player {
 			if (yleft + yAudRange + (minDis + delta) + delta > roomSide - eps) break;
 
 			for (int i = 0; ; ++i) {
+
+				++curBlock;
 
 				double xleft = i * xrange;
 				double xright = xleft + xrange;
@@ -541,10 +552,14 @@ public class Player implements sqdance.sim.Player {
 				if (cur >= numDancer) break;
 
 				// arrange positions in auditorium
+				int curNumPit = numPitAuditorium;
+				if (curBlock >= residual) --curNumPit;
+				int done = 0;
 				double y = yleft + delta;
-				for (int col = 0; col < numCol && y < yright - eps; ++col) {
+				for (int col = 0; col < numCol && y < yright - eps && done < curNumPit; ++col) {
 					double x = xleft + (safeDis + delta) / 2.;
-					for (int row = 0; row < numRowAuditoriumBlock && x < xright - eps; ++row) {
+					for (int row = 0; row < numRowAuditoriumBlock && x < xright - eps && done < curNumPit; ++row) {
+						++done;
 						
 						tmp = new Point(x, y);
 						if (!inside(tmp)) break;
@@ -584,14 +599,18 @@ public class Player implements sqdance.sim.Player {
 		return true;
 	}
 
-	private void arrangePositionCrowdAuditorium() {
+	private boolean arrangePositionCrowdAuditorium() {
+		boolean res = true;
+
 		double yrange = (minDis + delta * 2.) * 3.;
 		double xrange = (minDis + delta) + (minDis + delta * 2) + delta;
 
 		int numBlock = (int)((roomSide - eps) / yrange) * (int)((roomSide - eps) / xrange);
 		int numPitAuditorium = ((numDancer - 1) / numBlock) + 1 - 4;
+		int residual = numDancer - (numPitAuditorium + 4 - 1) * numBlock;
 
 		int cnt = 0;
+		int curBlock = 0;
 		for (int j = 0; ; ++j) {
 			int indexl = cnt;
 
@@ -599,6 +618,10 @@ public class Player implements sqdance.sim.Player {
 			double yright = yleft + yrange;
 
 			for (int i = 0; ; ++i) {
+
+				++curBlock;
+				int curNumPit = numPitAuditorium;
+				if (curBlock >= residual) --curNumPit;
 
 				double xleft = xrange * i;
 				double xright = xleft + xrange;
@@ -613,20 +636,20 @@ public class Player implements sqdance.sim.Player {
 
 				position[cnt++] = new Point(x1, y1);
 				position[cnt++] = new Point(x2, y1);
+
 				position[cnt++] = new Point(x1, y2);
 				position[cnt++] = new Point(x2, y2);
 
-				if (cnt >= numDancer) break;
-
 				// arrange positions in crowd auditorium
 				int done = 0;
-				for (double x = xleft; x < xright; x += safeDis + delta, ++done) {
+				for (double x = xleft; x < xright && done < curNumPit; x += safeDis + delta, ++done) {
 					position[cnt++] = new Point(x, yleft);
-					if (cnt >= numDancer) break;
+					if (done > 1 && cnt >= numDancer) break;
 				}
 				if (cnt >= numDancer) break;
 
-				for (int k = done; k < numPitAuditorium; ++k) {
+				for (int k = done; k < curNumPit; ++k) {
+					res = false; // will get minus score
 					position[cnt++] = new Point(xright, yleft);
 				}
 			}
@@ -651,7 +674,7 @@ public class Player implements sqdance.sim.Player {
 				}
 			}
 
-			if (cnt >= numDancer) return;
+			if (cnt >= numDancer) return res;
 		}
 	}
 

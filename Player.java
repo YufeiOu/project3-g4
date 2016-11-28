@@ -418,7 +418,7 @@ public class Player implements sqdance.sim.Player {
 			Point closestPitPosition = new Point((minDis + delta)*n_x + delta, (minDis + delta)*n_y + delta);
 			double w = distance(next, closestPitPosition);
 			if (w < safeDis + delta) {
-				System.out.println("haha, gotcha");
+				// System.out.println("haha, gotcha");
 				double ratio = (maxDis - (safeDis + delta - w)) / maxDis;
 				Point next1 = new Point(curr.x + (next.x - curr.x) * ratio, curr.y + (next.y - curr.y) * ratio);
 				return next1;

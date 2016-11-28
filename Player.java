@@ -407,13 +407,31 @@ public class Player implements sqdance.sim.Player {
 	}
 
 	Point findNextPosition(Point curr, Point des) {
-		if (distance(curr,des) < 2) return des;
+		if (distance(curr,des) < maxDis) return des;
 		else {
 			double x = des.x - curr.x;
 			double y = des.y - curr.y;
-			Point next = new Point(curr.x + (2-this.delta)*x/Math.sqrt(x*x+y*y), curr.y + (2-this.delta)*y/Math.sqrt(x*x+y*y));
+			Point next = new Point(curr.x + (maxDis-this.delta)*x/Math.sqrt(x*x+y*y), curr.y + (maxDis-this.delta)*y/Math.sqrt(x*x+y*y));
+			// avoid step on others
+			int n_x = findClosestPitIndex(next.x);
+			int n_y = findClosestPitIndex(next.y);
+			Point closestPitPosition = new Point((minDis + delta)*n_x + delta, (minDis + delta)*n_y + delta);
+			double w = distance(next, closestPitPosition);
+			if (w < safeDis + delta) {
+				// System.out.println("haha, gotcha");
+				double ratio = (maxDis - (safeDis + delta - w)) / maxDis;
+				Point next1 = new Point(curr.x + (next.x - curr.x) * ratio, curr.y + (next.y - curr.y) * ratio);
+				return next1;
+			}
 			return next;
 		}
+	}
+
+	int findClosestPitIndex(double coordinate) {
+		int n = (int) Math.floor((coordinate - delta) / (minDis + delta));
+		if (n < 0) return 0;
+		if (n >= 40) return 39;
+		return (coordinate - ((minDis + delta)*n + delta)) < minDis ? n : n + 1;
 	}
 
 	// generate instruction according to this.dancers

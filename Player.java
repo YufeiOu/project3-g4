@@ -25,7 +25,7 @@ public class Player implements sqdance.sim.Player {
 	private int couples_found = 0;
 	private int stay = 0;
 	private boolean single_all_the_way = false;
-	private int normal_limit = 1600;
+	private int normal_limit = 1816;
 	private int single_limit = 960;
 
 	public class Dancer{
@@ -110,71 +110,106 @@ public class Player implements sqdance.sim.Player {
 
 
 		this.connected = true;
-		this.pits = new Pit[normal_limit];
+		
 		this.dancers = new Dancer[d];
 		this.stay_and_dance = new Point[d];
-		this.pit_occupied = new boolean[1600];
+		
 		for(int i = 0; i < d; i++){
 			this.stay_and_dance[i] = new Point(0,0);
 		} 
 
-
 		double x = this.delta;
 		double y = this.delta;
-		double increment = this.minDis + this.delta;
 		int i = 0;
-		int old_i = -1;
-		int sign = 1;
+		double increment = this.minDis + this.delta;
+		if(single_all_the_way){
+			this.pits = new Pit[normal_limit];
+			this.pit_occupied = new boolean[this.normal_limit];
+			boolean stop = false;
+			boolean left_to_right = true;
+			while(!stop){
+				if(left_to_right){
+					x = 0;
+					while(x < this.room_side && i < this.normal_limit){
+						this.pits[i] = new Pit(i,new Point(x,y));
+						x += increment;
+						i++;
+					}
+				}
+				else{
+					x -= (increment + 0.5*increment);
+					while(x > 0 && i < this.normal_limit){
+						this.pits[i] = new Pit(i,new Point(x,y));	
+						x -= increment;
+						i++;
 
-		double x_min = this.delta - safeDis;
-		double x_max = this.room_side + safeDis;
-		double y_min = this.delta;
-		double y_max = this.room_side + safeDis;
-
-		//create the pits in a spiral fashion
-		while(old_i != i){
-			//go right
-			old_i = i;
-			while(x + safeDis < x_max){
-				this.pits[i] = new Pit(i,new Point(x,y));
-				i++;
-				x += increment;
+					}
+				}
+				left_to_right = !left_to_right;
+				y += Math.sqrt(3)*increment/2;
+				stop = y > this.room_side;
+				
 			}
-			x = this.pits[i-1].pos.x;
-			y += increment;
-			x_max = x;
-
-			//go down
-			while(y + safeDis < y_max){
-				this.pits[i] = new Pit(i,new Point(x,y));
-				i++;
-				y += increment;
-			}
-			y = this.pits[i-1].pos.y; 
-			x -= increment;
-			y_max = y;
-
-			//go left
-			while(x - safeDis > x_min){
-				this.pits[i] = new Pit(i,new Point(x,y));
-				i++;
-				x -= increment;
-			}
-			x = this.pits[i-1].pos.x; 
-			y -= increment;
-			x_min = x;
-
-			//go up
-			while(y - safeDis > y_min){
-				this.pits[i] = new Pit(i,new Point(x,y));
-				i++;
-				y -= increment;
-
-			}
-			y = this.pits[i-1].pos.y;
-			x += increment;
-			y_min = y;
 		}
+		else{
+			this.pits = new Pit[1600];
+			this.pit_occupied = new boolean[1600];
+
+			int old_i = -1;
+			int sign = 1;
+
+			double x_min = this.delta - safeDis;
+			double x_max = this.room_side + safeDis;
+			double y_min = this.delta;
+			double y_max = this.room_side + safeDis;
+
+			//create the pits in a spiral fashion
+			while(old_i != i){
+				//go right
+				old_i = i;
+				while(x + safeDis < x_max){
+					this.pits[i] = new Pit(i,new Point(x,y));
+					i++;
+					x += increment;
+				}
+				x = this.pits[i-1].pos.x;
+				y += increment;
+				x_max = x;
+
+				//go down
+				while(y + safeDis < y_max){
+					this.pits[i] = new Pit(i,new Point(x,y));
+					i++;
+					y += increment;
+				}
+				y = this.pits[i-1].pos.y; 
+				x -= increment;
+				y_max = y;
+
+				//go left
+				while(x - safeDis > x_min){
+					this.pits[i] = new Pit(i,new Point(x,y));
+					i++;
+					x -= increment;
+				}
+				x = this.pits[i-1].pos.x; 
+				y -= increment;
+				x_min = x;
+
+				//go up
+				while(y - safeDis > y_min){
+					this.pits[i] = new Pit(i,new Point(x,y));
+					i++;
+					y -= increment;
+
+				}
+				y = this.pits[i-1].pos.y;
+				x += increment;
+				y_min = y;
+			}
+
+		}
+		
 
 		//put players in pits
 		for(int j = 0; j < d; j++){
@@ -197,6 +232,8 @@ public class Player implements sqdance.sim.Player {
 	}
 
 	public Point[] play_normal(Point[] old_positions, int[] scores, int[] partner_ids, int[] enjoyment_gained) {
+		//return this.stay_and_dance;
+		
 		updatePartnerInfo(partner_ids,enjoyment_gained);
 		this.last_positions = old_positions;
 
@@ -216,6 +253,7 @@ public class Player implements sqdance.sim.Player {
 			
 		//generate instructions using target positions and current positions
 		return generateInstructions();
+		
 	}
 
 
@@ -280,6 +318,7 @@ public class Player implements sqdance.sim.Player {
 
 	// a = (x,y) we want to find least distance between (x+this.delta/3, y) (x-this.delta/3, y) (x, y+this.delta/3) (x, y-this.delta/3) and b
 	Point findNearestActualPoint(Point a, Point b) {
+		/*
 		Point left = new Point(a.x-this.delta/3,a.y);
 		Point right = new Point(a.x+this.delta/3,a.y);
 		Point down = new Point(a.x,a.y-this.delta/3);
@@ -288,8 +327,11 @@ public class Player implements sqdance.sim.Player {
 		if (distance(right,b) < distance(a_neighbor,b)) a_neighbor = right;
 		if (distance(down,b) < distance(a_neighbor,b)) a_neighbor = down;
 		if (distance(up,b) < distance(a_neighbor,b)) a_neighbor = up;
-
-		return a_neighbor;
+		*/
+		Point direction = new Point(b.x-a.x,b.y-a.y);
+		double norm = Math.sqrt(direction.x*direction.x + direction.y*direction.y);
+		direction = new Point(direction.x/norm,direction.y/norm);
+		return new Point(a.x+direction.x*this.delta/3,a.y+direction.y*this.delta/3);
 	}
 
 	int findDancer(int pit_id){
@@ -453,9 +495,9 @@ public class Player implements sqdance.sim.Player {
 		for(int i = 0; i < d; i++){
 			movement[i] = new Point(dancers[i].next_pos.x-this.last_positions[i].x,dancers[i].next_pos.y-this.last_positions[i].y);
 			if(movement[i].x * movement[i].x + movement[i].y * movement[i].y > 4){
-				System.out.println("dancer " + i + " move too far");
-				System.out.println("soulmate: " + dancers[i].soulmate);
-				System.out.println("connected? " + this.connected);
+				//System.out.println("dancer " + i + " move too far");
+				//System.out.println("soulmate: " + dancers[i].soulmate);
+				//System.out.println("connected? " + this.connected);
 				movement[i] = new Point(0,0);
 			}
 		}

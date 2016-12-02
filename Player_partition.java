@@ -6,7 +6,7 @@ import java.io.*;
 import java.util.*;
 import java.lang.System.*;
 
-public class Player implements sqdance.sim.Player {
+public class Player_partition {
 	
 	private static int INF = (int)1e9;
 	private static double eps = 1e-7;

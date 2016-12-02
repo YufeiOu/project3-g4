@@ -1,6 +1,7 @@
 package sqdance.g4;
 
 import sqdance.sim.Point;
+import sqdance.g4.Player_partition;
 
 import java.io.*;
 import java.util.*;
@@ -72,22 +73,31 @@ public class Player implements sqdance.sim.Player {
 
 	private int timeStamp = 0;
 
+	//================= partition strategy =====================================
+	private Player_partition pPlayer;
+
 
 	public void init(int d, int room_side) {
 		this.d = d;
 		this.room_side = room_side;
 
 		if (d <= normal_limit) init_normal();
+		else if (d >= 2000 && d <= 10100) {
+			pPlayer = new Player_partition();
+			pPlayer.init(d, room_side);
+		}
 		else init_exchangeStage(d, room_side);
 	}
 
 	public Point[] generate_starting_locations() {
 		if (d <= normal_limit) return generate_starting_locations_normal();
+		else if (d >= 2000 && d <= 10100) return pPlayer.generate_starting_locations();
 		else return generate_starting_locations_exchangeStage();
 	}
 
 	public Point[] play(Point[] old_positions, int[] scores, int[] partner_ids, int[] enjoyment_gained) {
 		if (d <= normal_limit) return play_normal(old_positions, scores, partner_ids, enjoyment_gained);
+		else if (d >= 2000 && d <= 10100) return pPlayer.play(old_positions, scores, partner_ids, enjoyment_gained);
 		else return play_exchangeStage(old_positions, scores, partner_ids, enjoyment_gained);
 	}
 
@@ -568,7 +578,10 @@ public class Player implements sqdance.sim.Player {
 	}
 
 	private void fixDancerPositions() {
-		// binary search the scale of the auditorium and stage
+		if (numDancer == 1817) {
+			arrangePosition(1);
+			return;
+		}
 		if (arrangePositionCrowdAuditorium()) return;
 		
 		System.out.println("*************** only one row stage **************");
